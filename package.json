@@ -1,0 +1,25 @@
+{
+  "name": "greenkarachi",
+  "version": "0.0.1",
+  "description": "GreenKarachi - B2B plant marketplace connecting plant buyers, nursery owners, businesses, plantation organizers, donors, and investors in Karachi, Pakistan",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently "npm:start:client" "npm:start:server"",
+    "start:client": "cd client && npm run dev",
+    "start:server": "cd server && npm start",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "check": "npm run check:client && npm run check:server",
+    "check:client": "cd client && npm run typecheck",
+    "check:server": "cd server && npm run typecheck",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
