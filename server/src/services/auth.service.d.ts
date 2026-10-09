@@ -71,4 +71,14 @@ export declare const getCurrentUser: (userId: string) => Promise<Omit<{
     roles: any;
     passwordHash: undefined;
 }, "passwordHash">>;
-export declare const upsertNurseryProfile: (userId: string, input: z.infer<typeof nurseryProfileSchema>) => Promise<any[]>;
+export declare const upsertNurseryProfile: (userId: string, input: z.infer<typeof nurseryProfileSchema>) => Promise<any>;
+export declare const getNurseryProfile: (userId: string) => Promise<{
+    user_id: any;
+    name: any;
+    phone: any;
+    city: any;
+    address: any;
+    website: any;
+    verification_status: any;
+    is_verified: any;
+} | null>;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { loginSchema, nurseryProfileSchema, registerSchema, getCurrentUser, loginUser, registerUser, upsertNurseryProfile } from '../services/auth.service';
+import { loginSchema, nurseryProfileSchema, registerSchema, getCurrentUser, getNurseryProfile, loginUser, registerUser, upsertNurseryProfile } from '../services/auth.service';
 import { requireAuth, requireRoles, type RequestWithUser } from '../middleware/auth';
 
 const router = Router();
@@ -42,14 +42,8 @@ router.get('/me', requireAuth, async (req: RequestWithUser, res) => {
 
 router.get('/nursery/me', requireAuth, async (req: RequestWithUser, res) => {
   try {
-    const profile = {
-      userId: req.user!.id,
-      name: req.user!.name,
-      roles: req.user!.roles,
-      source: 'supabase-auth'
-    };
-
-    return res.json({ nursery: profile });
+    const nursery = await getNurseryProfile(req.user!.id);
+    return res.json({ nursery });
   } catch (error) {
     return res.status(500).json({ message: (error as Error).message });
   }

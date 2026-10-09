@@ -41,13 +41,8 @@ router.get('/me', auth_1.requireAuth, async (req, res) => {
 });
 router.get('/nursery/me', auth_1.requireAuth, async (req, res) => {
     try {
-        const profile = {
-            userId: req.user.id,
-            name: req.user.name,
-            roles: req.user.roles,
-            source: 'supabase-auth'
-        };
-        return res.json({ nursery: profile });
+        const nursery = await (0, auth_service_1.getNurseryProfile)(req.user.id);
+        return res.json({ nursery });
     }
     catch (error) {
         return res.status(500).json({ message: error.message });

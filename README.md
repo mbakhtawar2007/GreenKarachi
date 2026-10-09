@@ -126,6 +126,14 @@ To start a specific phase, run:
 opencode "Start Phase X from GREENKARACHI_BUILD_PHASES.md"
 ```
 
+## Plant Catalog (Phase 3)
+
+The catalog API uses the existing Supabase project for authenticated nursery profiles and listing storage. Configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the server environment, then apply `server/supabase/migrations/20261009_phase3_plant_listings.sql` to that project's PostgreSQL database (for example, from the Supabase SQL Editor). The migration expects the existing `public.nurseries` table to have a unique UUID `user_id` column, as used by the nursery profile API.
+
+The API is mounted at `/api/catalog/listings`. Public listing search accepts `query`, `species`, `category`, `location`, `minPrice`, `maxPrice`, `minQuantity`, `maxQuantity`, `verified`, `page`, and `pageSize`; the paginated nursery directory is available at `/nurseries`. Nursery owners manage listings at `/mine` and can create, edit, update stock, or archive their own records with a bearer access token. Only active listings appear in public search; out-of-stock and archived listings are not advertised as available.
+
+To try owner inventory, register/sign in with the Nursery Owner role, open **Inventory**, save the nursery profile, and then add listings. Image URLs are optional and limited to HTTP/HTTPS; uploaded-file storage is not configured in this phase.
+
 ## Technology Stack
 
 ### Frontend

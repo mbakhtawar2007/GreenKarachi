@@ -6,10 +6,21 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import net from 'node:net';
 import { config } from './config/env';
+import authRoutes from './routes/auth';
+import catalogRoutes from './routes/catalog';
 
 const app: Express = express();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? config.PORT);
 const allowedOrigins = config.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+const isLocalDevelopmentOrigin = (origin: string) => {
+  if (config.NODE_ENV !== 'development') return false;
+  try {
+    const parsed = new URL(origin);
+    return ['localhost', '127.0.0.1'].includes(parsed.hostname) && ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+};
 
 const getAvailablePort = (candidatePort: number): Promise<number> =>
   new Promise((resolve, reject) => {
@@ -36,12 +47,15 @@ const getAvailablePort = (candidatePort: number): Promise<number> =>
 
 app.use(helmet());
 app.use(cors({
-  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin) || isLocalDevelopmentOrigin(origin)),
   credentials: true
 }));
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/api/auth', authRoutes);
+app.use('/api/catalog/listings', catalogRoutes);
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({

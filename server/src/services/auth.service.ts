@@ -114,11 +114,24 @@ export const upsertNurseryProfile = async (userId: string, input: z.infer<typeof
       website: input.website?.trim() || null,
       updated_at: new Date().toISOString()
     })
-    .select();
+    .select()
+    .single();
 
   if (error) {
     throw new Error(error.message);
   }
 
+  return data;
+};
+
+export const getNurseryProfile = async (userId: string) => {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('nurseries')
+    .select('user_id, name, phone, city, address, website, verification_status, is_verified')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
   return data;
 };

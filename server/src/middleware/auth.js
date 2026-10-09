@@ -8,19 +8,29 @@ const requireAuth = (req, res, next) => {
         res.status(401).json({ message: 'Authentication required.' });
         return;
     }
+    const token = header.slice('Bearer '.length);
     try {
-        const token = header.replace('Bearer ', '');
         const decoded = (0, auth_1.verifyToken)(token);
-        req.user = {
-            id: decoded.id,
-            email: decoded.email,
-            name: decoded.name,
-            roles: decoded.roles
-        };
+        req.user = { id: decoded.id, email: decoded.email, name: decoded.name, roles: decoded.roles };
         next();
+        return;
     }
-    catch (error) {
-        res.status(401).json({ message: 'Invalid or expired token.' });
+    catch {
+        void Promise.resolve().then(() => (0, auth_1.getSupabaseClient)().auth.getUser(token)).then(({ data, error }) => {
+            if (error || !data.user) {
+                res.status(401).json({ message: 'Invalid or expired token.' });
+                return;
+            }
+            req.user = {
+                id: data.user.id,
+                email: data.user.email ?? '',
+                name: String(data.user.user_metadata?.name ?? 'User'),
+                roles: (0, auth_1.normalizeRoles)(data.user.user_metadata?.roles)
+            };
+            next();
+        }).catch(() => {
+            res.status(401).json({ message: 'Invalid or expired token.' });
+        });
     }
 };
 exports.requireAuth = requireAuth;

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { isRoleAllowed, verifyToken } from '../lib/auth';
+import { getSupabaseClient, isRoleAllowed, normalizeRoles, verifyToken } from '../lib/auth';
 
 export type AuthenticatedUser = {
   id: string;
@@ -20,20 +20,28 @@ export const requireAuth = (req: RequestWithUser, res: Response, next: NextFunct
     return;
   }
 
+  const token = header.slice('Bearer '.length);
   try {
-    const token = header.replace('Bearer ', '');
     const decoded = verifyToken(token);
-
-    req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      name: decoded.name,
-      roles: decoded.roles
-    };
-
+    req.user = { id: decoded.id, email: decoded.email, name: decoded.name, roles: decoded.roles };
     next();
-  } catch (error) {
-    res.status(401).json({ message: 'Invalid or expired token.' });
+    return;
+  } catch {
+    void Promise.resolve().then(() => getSupabaseClient().auth.getUser(token)).then(({ data, error }) => {
+      if (error || !data.user) {
+        res.status(401).json({ message: 'Invalid or expired token.' });
+        return;
+      }
+      req.user = {
+        id: data.user.id,
+        email: data.user.email ?? '',
+        name: String(data.user.user_metadata?.name ?? 'User'),
+        roles: normalizeRoles(data.user.user_metadata?.roles as string[] | string | undefined)
+      };
+      next();
+    }).catch(() => {
+      res.status(401).json({ message: 'Invalid or expired token.' });
+    });
   }
 };
 

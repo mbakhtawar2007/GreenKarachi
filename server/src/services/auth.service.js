@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.upsertNurseryProfile = exports.getCurrentUser = exports.loginUser = exports.registerUser = exports.nurseryProfileSchema = exports.loginSchema = exports.registerSchema = void 0;
+exports.getNurseryProfile = exports.upsertNurseryProfile = exports.getCurrentUser = exports.loginUser = exports.registerUser = exports.nurseryProfileSchema = exports.loginSchema = exports.registerSchema = void 0;
 const zod_1 = require("zod");
 const auth_1 = require("../lib/auth");
 exports.registerSchema = zod_1.z.object({
@@ -102,10 +102,23 @@ const upsertNurseryProfile = async (userId, input) => {
         website: input.website?.trim() || null,
         updated_at: new Date().toISOString()
     })
-        .select();
+        .select()
+        .single();
     if (error) {
         throw new Error(error.message);
     }
     return data;
 };
 exports.upsertNurseryProfile = upsertNurseryProfile;
+const getNurseryProfile = async (userId) => {
+    const supabase = (0, auth_1.getSupabaseClient)();
+    const { data, error } = await supabase
+        .from('nurseries')
+        .select('user_id, name, phone, city, address, website, verification_status, is_verified')
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (error)
+        throw new Error(error.message);
+    return data;
+};
+exports.getNurseryProfile = getNurseryProfile;

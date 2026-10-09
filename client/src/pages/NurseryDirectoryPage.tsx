@@ -1,84 +1,103 @@
-const NurseryDirectoryPage: React.FC = () => {
-  return (
-    <section className="py-20">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-5xl font-bold text-green-800">
-            Nursery Directory
-          </h1>
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M3 3v2h20v20a2 2 0 0 0 2-2H5a2 2 0 0 0-2-2V5a2 2 0 0 0-2-2H3m2.286 5.967l3.597 3.586m0 5.658l3.586-3.597m-2.286 2.286l-3.586 3.586m3.586-3.586l-3.597-3.586m5.958 2.286l3.586-3.586M9 12l2 2 4-4m6-8v12a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4V9m16 4a4 4 0 0 1-4 4H5a4 4 0 0 1-4-4v-2m4-6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-2m3 0a2 2 0 0 0 2-2h2a2 2 0 0 0 2-2v-2m-6 0h6m-5-3a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"></path>
-            </svg>
-            <span className="text-sm text-gray-500">12 nurseries listed</span>
-          </div>
-        </div>
+import React from 'react';
+import { apiFetch } from '../api/catalog';
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-2xl transition-shadow">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-flex flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold">Nursery A</h3>
-                <p className="text-sm text-gray-500">Karachi</p>
-              </div>
-            </div>
-            <p className="text-gray-600 text-sm">
-              Specializing in native Pakistani plants and sustainable landscaping.
-            </p>
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <p className="text-green-600 font-medium">Verified: ✓</p>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-2xl transition-shadow">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold">Nursery B</h3>
-                <p className="text-sm text-gray-500">Karachi</p>
-              </div>
-            </div>
-            <p className="text-gray-600 text-sm">
-              Focus on ornamental plants and seasonal varieties.
-            </p>
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <p className="text-gray-500 text-sm">Verification pending</p>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-2xl transition-shadow">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-semibold">Nursery C</h3>
-                <p className="text-sm text-gray-500">Karachi</p>
-              </div>
-            </div>
-            <p className="text-gray-600 text-sm">
-              Exporter of premium quality plants to international markets.
-            </p>
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <p className="text-green-600 font-medium">Verified: ✓</p>
-            </div>
-          </div>
+type Nursery = {
+  user_id: string;
+  name: string;
+  city: string | null;
+  address: string | null;
+  website: string | null;
+  verification_status: string;
+  is_verified: boolean;
+};
+
+type NurseryResponse = {
+  nurseries: Nursery[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+};
+
+const NurseryDirectoryPage: React.FC = () => {
+  const [query, setQuery] = React.useState('');
+  const [location, setLocation] = React.useState('');
+  const [verified, setVerified] = React.useState('');
+  const [filters, setFilters] = React.useState({ query: '', location: '', verified: '' });
+  const [page, setPage] = React.useState(1);
+  const [result, setResult] = React.useState<NurseryResponse | null>(null);
+  const [error, setError] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let active = true;
+    const params = new URLSearchParams({ page: String(page), pageSize: '12' });
+    Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+    setLoading(true);
+    apiFetch<NurseryResponse>(`/api/catalog/listings/nurseries?${params.toString()}`)
+      .then((data) => { if (active) setResult(data); })
+      .catch((requestError: unknown) => {
+        if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load nurseries.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [filters, page]);
+
+  const applyFilters = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFilters({ query: query.trim(), location: location.trim(), verified });
+    setPage(1);
+  };
+
+  return (
+    <section className="py-8 md:py-12">
+      <header className="mb-8 border-b border-green-200 pb-6">
+        <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Registered businesses</p>
+        <h1 className="mt-2 text-3xl font-bold text-green-950">Nursery Directory</h1>
+        <p className="mt-2 text-gray-600">Find nurseries by name, location, and verification status.</p>
+      </header>
+
+      <form onSubmit={applyFilters} className="mb-8 grid grid-cols-1 gap-4 border-b border-green-200 pb-6 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="text-sm font-medium text-gray-700">Nursery name
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+        </label>
+        <label className="text-sm font-medium text-gray-700">City or address
+          <input value={location} onChange={(event) => setLocation(event.target.value)} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+        </label>
+        <label className="text-sm font-medium text-gray-700">Verification
+          <select value={verified} onChange={(event) => setVerified(event.target.value)} className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200">
+            <option value="">Any status</option>
+            <option value="true">Verified</option>
+            <option value="false">Not verified</option>
+          </select>
+        </label>
+        <div className="flex items-end">
+          <button className="rounded bg-green-800 px-4 py-2 font-semibold text-white hover:bg-green-900">Search nurseries</button>
         </div>
-      </div>
+      </form>
+
+      {loading && <p className="py-12 text-center text-gray-600" role="status">Loading nurseries...</p>}
+      {!loading && error && <p className="border-l-4 border-red-700 bg-red-50 p-4 text-red-900" role="alert">{error}</p>}
+      {!loading && !error && result?.nurseries.length === 0 && <p className="border-y border-green-200 py-12 text-center text-gray-600">No nurseries match this search.</p>}
+      {!loading && !error && result && result.nurseries.length > 0 && <>
+        <p className="mb-4 text-sm text-gray-600" aria-live="polite">{result.pagination.total} nursery{result.pagination.total === 1 ? '' : 'ies'} listed</p>
+        <div className="divide-y divide-green-200">
+          {result.nurseries.map((nursery) => (
+            <article key={nursery.user_id} className="grid gap-3 py-5 sm:grid-cols-[1fr_auto] sm:items-start">
+              <div>
+                <h2 className="text-lg font-semibold text-green-950">{nursery.name}</h2>
+                <p className="mt-1 text-sm text-gray-600">{[nursery.city, nursery.address].filter(Boolean).join(' · ') || 'Location not provided'}</p>
+                {nursery.website && <a href={nursery.website} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-green-800 underline underline-offset-4">Visit website</a>}
+              </div>
+              <span className={`text-sm font-semibold ${nursery.is_verified ? 'text-green-800' : 'text-gray-600'}`}>
+                {nursery.is_verified ? 'Verified' : nursery.verification_status === 'REJECTED' ? 'Not verified' : 'Verification pending'}
+              </span>
+            </article>
+          ))}
+        </div>
+        <nav aria-label="Nursery directory pages" className="mt-8 flex items-center justify-between border-t border-green-200 pt-4">
+          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="rounded border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+          <span className="text-sm text-gray-600">Page {result.pagination.page} of {Math.max(result.pagination.totalPages, 1)}</span>
+          <button type="button" disabled={page >= result.pagination.totalPages} onClick={() => setPage((current) => current + 1)} className="rounded border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+        </nav>
+      </>}
     </section>
   );
 };

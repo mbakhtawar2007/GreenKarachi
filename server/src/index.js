@@ -8,11 +8,23 @@ const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
 const node_net_1 = __importDefault(require("node:net"));
-const auth_1 = __importDefault(require("./routes/auth"));
 const env_1 = require("./config/env");
+const auth_1 = __importDefault(require("./routes/auth"));
+const catalog_1 = __importDefault(require("./routes/catalog"));
 const app = (0, express_1.default)();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? env_1.config.PORT);
 const allowedOrigins = env_1.config.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+const isLocalDevelopmentOrigin = (origin) => {
+    if (env_1.config.NODE_ENV !== 'development')
+        return false;
+    try {
+        const parsed = new URL(origin);
+        return ['localhost', '127.0.0.1'].includes(parsed.hostname) && ['http:', 'https:'].includes(parsed.protocol);
+    }
+    catch {
+        return false;
+    }
+};
 const getAvailablePort = (candidatePort) => new Promise((resolve, reject) => {
     const tester = node_net_1.default.createServer();
     tester.once('error', (error) => {
@@ -31,12 +43,14 @@ const getAvailablePort = (candidatePort) => new Promise((resolve, reject) => {
 });
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin) || isLocalDevelopmentOrigin(origin)),
     credentials: true
 }));
 app.use((0, morgan_1.default)('dev'));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
+app.use('/api/auth', auth_1.default);
+app.use('/api/catalog/listings', catalog_1.default);
 app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
@@ -44,14 +58,13 @@ app.get('/api/health', (req, res) => {
         message: 'GreenKarachi API is healthy'
     });
 });
-app.use('/api/auth', auth_1.default);
 app.get('/', (req, res) => {
     res.json({
         name: 'GreenKarachi API',
         version: '0.0.1',
         description: 'B2B plant marketplace backend',
         health: '/api/health',
-        auth: '/api/auth'
+        auth: 'disabled-for-now'
     });
 });
 app.use((error, req, res, _next) => {
