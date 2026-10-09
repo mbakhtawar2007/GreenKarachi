@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  NURSERY_OWNER
+  PLANTATION_ORGANIZER
+  DONOR_INVESTOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  roles        Role[]   @default([BUYER])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  nursery      Nursery?
+
+  @@map("users")
+}
+
+model Nursery {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  phone              String?
+  city               String?
+  address            String?
+  website            String?
+  verificationStatus VerificationStatus @default(PENDING)
+  isVerified         Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("nurseries")
+}

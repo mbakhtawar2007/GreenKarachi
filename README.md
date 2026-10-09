@@ -66,9 +66,9 @@ npm run build
 
 ### Access the Application
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3000
-- **Health Check**: http://localhost:3000/api/health
+- **Frontend**: http://localhost:3005
+- **Backend API**: http://localhost:4001
+- **Health Check**: http://localhost:4001/api/health
 
 ## Project Structure
 
@@ -135,7 +135,7 @@ opencode "Start Phase X from GREENKARACHI_BUILD_PHASES.md"
 
 ### Backend
 - Node.js + TypeScript + Express
-- PostgreSQL (Phase 2+)
+- Supabase Auth + Postgres (Phase 2)
 - Zod for validation
 
 ### Development
