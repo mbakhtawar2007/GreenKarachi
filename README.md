@@ -164,3 +164,4 @@ CORS_ORIGIN=http://localhost:5173
 ## Support
 
 For issues with project setup or running commands, refer to the START_HERE.md file or contact the development team.
+# GreenKarachi
