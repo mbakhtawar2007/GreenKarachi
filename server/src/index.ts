@@ -10,6 +10,7 @@ import { config } from './config/env';
 
 const app: Express = express();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? config.PORT);
+const allowedOrigins = config.CORS_ORIGIN.split(',').map((origin) => origin.trim());
 
 const getAvailablePort = (candidatePort: number): Promise<number> =>
   new Promise((resolve, reject) => {
@@ -35,7 +36,10 @@ const getAvailablePort = (candidatePort: number): Promise<number> =>
   });
 
 app.use(helmet());
-app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+  credentials: true
+}));
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

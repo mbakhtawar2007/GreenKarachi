@@ -12,6 +12,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const env_1 = require("./config/env");
 const app = (0, express_1.default)();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? env_1.config.PORT);
+const allowedOrigins = env_1.config.CORS_ORIGIN.split(',').map((origin) => origin.trim());
 const getAvailablePort = (candidatePort) => new Promise((resolve, reject) => {
     const tester = node_net_1.default.createServer();
     tester.once('error', (error) => {
@@ -29,7 +30,10 @@ const getAvailablePort = (candidatePort) => new Promise((resolve, reject) => {
     tester.listen(candidatePort, '0.0.0.0');
 });
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)({ origin: env_1.config.CORS_ORIGIN, credentials: true }));
+app.use((0, cors_1.default)({
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+    credentials: true
+}));
 app.use((0, morgan_1.default)('dev'));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
