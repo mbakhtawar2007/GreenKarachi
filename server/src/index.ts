@@ -5,7 +5,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import net from 'node:net';
-import authRouter from './routes/auth';
 import { config } from './config/env';
 
 const app: Express = express();
@@ -52,15 +51,13 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-app.use('/api/auth', authRouter);
-
 app.get('/', (req: Request, res: Response) => {
   res.json({
     name: 'GreenKarachi API',
     version: '0.0.1',
     description: 'B2B plant marketplace backend',
     health: '/api/health',
-    auth: '/api/auth'
+    auth: 'disabled-for-now'
   });
 });
 
