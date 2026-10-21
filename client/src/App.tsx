@@ -58,7 +58,7 @@ const App: React.FC = () => {
           <Route path="collaboration" element={session?.user.roles.includes('NURSERY_OWNER')
             ? <CollaborationPage session={session} />
             : <Navigate to="/login" replace />} />
-          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects" element={<ProjectsPage session={session} />} />
           <Route path="login" element={<LoginPage onLogin={handleLogin} />} />
           <Route path="register" element={<RegisterPage onLogin={handleLogin} />} />
           <Route path="inventory" element={session?.user.roles.includes('NURSERY_OWNER')

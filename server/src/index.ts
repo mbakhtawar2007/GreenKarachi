@@ -10,6 +10,7 @@ import authRoutes from './routes/auth';
 import catalogRoutes from './routes/catalog';
 import quoteRoutes from './routes/quotes';
 import collaborationRoutes from './routes/collaboration';
+import projectRoutes from './routes/projects';
 
 const app: Express = express();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? config.PORT);
@@ -60,6 +61,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/catalog/listings', catalogRoutes);
 app.use('/api/quotes', quoteRoutes);
 app.use('/api/collaboration', collaborationRoutes);
+app.use('/api/projects', projectRoutes);
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
