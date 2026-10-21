@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import InventoryPage from './pages/InventoryPage';
 import QuotesOrdersPage from './pages/QuotesOrdersPage';
+import AdminPage from './pages/AdminPage';
 
 export type AuthUser = {
   id: string;
@@ -53,7 +54,7 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 py-8">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="marketplace" element={<MarketplacePage />} />
+          <Route path="marketplace" element={<MarketplacePage session={session} />} />
           <Route path="nursery-directory" element={<NurseryDirectoryPage />} />
           <Route path="collaboration" element={session?.user.roles.includes('NURSERY_OWNER')
             ? <CollaborationPage session={session} />
@@ -66,6 +67,9 @@ const App: React.FC = () => {
             : <Navigate to="/login" replace />} />
           <Route path="quotes" element={session && (session.user.roles.includes('BUYER') || session.user.roles.includes('NURSERY_OWNER'))
             ? <QuotesOrdersPage session={session} />
+            : <Navigate to="/login" replace />} />
+          <Route path="admin" element={session?.user.roles.includes('ADMIN')
+            ? <AdminPage session={session} />
             : <Navigate to="/login" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

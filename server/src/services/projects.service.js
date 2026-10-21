@@ -198,6 +198,12 @@ exports.canPledgeToProject = canPledgeToProject;
 // already hold a pledge on the project (so they can still see the record
 // their pledge belongs to).
 const canViewProject = (project, viewerUserId, viewerHasPledge = false) => {
+    // Phase 7 moderation: an admin-hidden project is visible only to its
+    // organizer (admins use the admin API). Rows from before Phase 7 have
+    // no moderation_status in memory, which means VISIBLE.
+    if ((project.moderation_status ?? 'VISIBLE') === 'HIDDEN') {
+        return Boolean(viewerUserId && (0, exports.isOrganizer)(project, viewerUserId));
+    }
     if (project.status === 'PUBLISHED' || project.status === 'COMPLETED')
         return true;
     if (viewerUserId && (0, exports.isOrganizer)(project, viewerUserId))
@@ -443,6 +449,8 @@ const discoverProjects = async (filters, viewerUserId = null, supabase = (0, aut
         .from('plantation_projects')
         .select('*', { count: 'exact' })
         .eq('status', filters.status)
+        // Phase 7 moderation: admin-hidden projects are never discoverable.
+        .eq('moderation_status', 'VISIBLE')
         .order('start_date', { ascending: true })
         .range(from, from + filters.pageSize - 1);
     if (filters.query) {
