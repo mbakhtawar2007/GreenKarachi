@@ -55,7 +55,9 @@ const App: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="marketplace" element={<MarketplacePage />} />
           <Route path="nursery-directory" element={<NurseryDirectoryPage />} />
-          <Route path="collaboration" element={<CollaborationPage />} />
+          <Route path="collaboration" element={session?.user.roles.includes('NURSERY_OWNER')
+            ? <CollaborationPage session={session} />
+            : <Navigate to="/login" replace />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="login" element={<LoginPage onLogin={handleLogin} />} />
           <Route path="register" element={<RegisterPage onLogin={handleLogin} />} />

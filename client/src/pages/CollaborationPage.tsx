@@ -1,76 +1,421 @@
-const CollaborationPage: React.FC = () => {
+import React from 'react';
+import {
+  acceptSupplyOffer,
+  changeSupplyGapRequestStatus,
+  createSupplyGapRequest,
+  getMySupplyGapRequests,
+  getMySupplyOffers,
+  getOpenSupplyGapRequests,
+  rejectSupplyOffer,
+  submitSupplyOffer,
+  updateSupplyGapRequest,
+  withdrawSupplyOffer,
+  type SupplyGapRequest,
+  type SupplyOffer
+} from '../api/collaboration';
+import type { AuthSession } from '../App';
+
+const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
+const formatMoney = (value: string | number) => currency.format(Number(value));
+const statusLabel = (status: string) => status.replaceAll('_', ' ');
+
+type RequestForm = {
+  plantName: string;
+  species: string;
+  totalRequired: string;
+  stockAvailable: string;
+  requirements: string;
+  neededBy: string;
+  area: string;
+  notes: string;
+};
+
+const emptyForm: RequestForm = {
+  plantName: '',
+  species: '',
+  totalRequired: '100',
+  stockAvailable: '0',
+  requirements: '',
+  neededBy: '',
+  area: '',
+  notes: ''
+};
+
+type OfferForm = { quantity: string; unitPrice: string; availabilityCondition: string; deliveryArrangement: string; notes: string };
+const emptyOfferForm: OfferForm = { quantity: '', unitPrice: '', availabilityCondition: '', deliveryArrangement: '', notes: '' };
+
+const inputClass = 'mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200';
+
+// The breakdown every participant reasons with. Only ACCEPTED offers are
+// committed supply; pending offers are still just offers.
+const Breakdown: React.FC<{ request: SupplyGapRequest }> = ({ request }) => {
+  const pendingOffered = (request.offers ?? [])
+    .filter((offer) => offer.status === 'PENDING')
+    .reduce((sum, offer) => sum + offer.quantity, 0);
+  const summary = request.summary ?? {
+    quantity_needed: request.quantity_needed,
+    offered_quantity: pendingOffered,
+    committed_quantity: request.committed_quantity,
+    remaining_gap: Math.max(0, request.quantity_needed - request.committed_quantity)
+  };
+  const rows: Array<[string, number]> = [
+    ['Total required', request.total_required],
+    ['Your available stock', request.stock_available],
+    ['Quantity needed (gap)', summary.quantity_needed],
+    ['Offered, still pending', summary.offered_quantity],
+    ['Committed (accepted offers)', summary.committed_quantity],
+    ['Remaining gap', summary.remaining_gap]
+  ];
   return (
-    <section className="py-20 bg-green-50">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-5xl font-bold text-green-800">
-            Nursery Collaboration
-          </h1>
-          <p className="text-lg text-gray-600">
-            Connect with other nurseries to fulfill supply gaps and coordinate stock.
-          </p>
+    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+      {rows.map(([label, value]) => (
+        <div key={label}>
+          <dt className="text-gray-500">{label}</dt>
+          <dd className="font-semibold">{value} plants</dd>
         </div>
+      ))}
+    </dl>
+  );
+};
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Supply Gap Request Card */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Supply Gap Request</h3>
-                <p className="text-sm text-gray-500">Request additional stock from other nurseries</p>
-              </div>
-            </div>
-            
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <p className="text-green-600 font-medium">Create Request</p>
-            </div>
-          </div>
+const CollaborationPage: React.FC<{ session: AuthSession }> = ({ session }) => {
+  const [myRequests, setMyRequests] = React.useState<SupplyGapRequest[]>([]);
+  const [openRequests, setOpenRequests] = React.useState<SupplyGapRequest[]>([]);
+  const [myOffers, setMyOffers] = React.useState<SupplyOffer[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [message, setMessage] = React.useState('');
 
-          {/* Offers Card */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M13 2L3 14h9l-1 8 13-6 1 8h9l-1-8z"></path>
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Supplier Offers</h3>
-                <p className="text-sm text-gray-500">Receive and review offers from other nurseries</p>
-              </div>
-            </div>
-            
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <p className="text-green-600 font-medium">View Offers</p>
-            </div>
-          </div>
+  const [form, setForm] = React.useState<RequestForm>(emptyForm);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [offerForms, setOfferForms] = React.useState<Record<string, OfferForm>>({});
 
-          {/* Request Status Card */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [mine, open, offers] = await Promise.all([
+        getMySupplyGapRequests(session.token),
+        getOpenSupplyGapRequests(session.token),
+        getMySupplyOffers(session.token)
+      ]);
+      setMyRequests(mine.supplyGapRequests);
+      setOpenRequests(open.supplyGapRequests);
+      setMyOffers(offers.supplyOffers);
+      setError('');
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load collaboration data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => { void loadData(); }, [session.token]);
+
+  const runAction = async (action: () => Promise<unknown>, success: string) => {
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      await action();
+      setMessage(success);
+      await loadData();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : 'The action could not be completed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const formGap = Math.max(0, Number(form.totalRequired || 0) - Number(form.stockAvailable || 0));
+
+  const submitRequestForm = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const input = {
+      plantName: form.plantName,
+      species: form.species,
+      totalRequired: Number(form.totalRequired),
+      stockAvailable: Number(form.stockAvailable),
+      requirements: form.requirements,
+      neededBy: form.neededBy,
+      area: form.area,
+      notes: form.notes
+    };
+    if (editingId) {
+      await runAction(async () => {
+        await updateSupplyGapRequest(session.token, editingId, input);
+        setEditingId(null);
+        setForm(emptyForm);
+      }, 'Supply gap request updated. The quantity needed was recalculated on the server.');
+    } else {
+      await runAction(async () => {
+        await createSupplyGapRequest(session.token, input);
+        setForm(emptyForm);
+      }, 'Supply gap request published. Other nurseries can now offer stock against the gap.');
+    }
+  };
+
+  const startEditing = (request: SupplyGapRequest) => {
+    setEditingId(request.id);
+    setForm({
+      plantName: request.plant_name,
+      species: request.species ?? '',
+      totalRequired: String(request.total_required),
+      stockAvailable: String(request.stock_available),
+      requirements: request.requirements ?? '',
+      neededBy: request.needed_by,
+      area: request.area,
+      notes: request.notes ?? ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const setOfferField = (requestId: string, key: keyof OfferForm, value: string) =>
+    setOfferForms((current) => ({ ...current, [requestId]: { ...(current[requestId] ?? emptyOfferForm), [key]: value } }));
+
+  const submitOffer = async (request: SupplyGapRequest) => {
+    const values = offerForms[request.id] ?? emptyOfferForm;
+    await runAction(
+      () => submitSupplyOffer(session.token, request.id, {
+        quantity: Number(values.quantity),
+        unitPrice: Number(values.unitPrice),
+        availabilityCondition: values.availabilityCondition,
+        deliveryArrangement: values.deliveryArrangement,
+        notes: values.notes
+      }),
+      'Offer submitted as pending. It only counts as committed supply if the requesting nursery accepts it.'
+    );
+  };
+
+  return (
+    <section className="py-8 md:py-12">
+      <header className="mb-8 border-b border-green-200 pb-6">
+        <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Nursery collaboration</p>
+        <h1 className="mt-2 text-3xl font-bold text-green-950">Supply-gap requests &amp; supplier offers</h1>
+        <p className="mt-2 max-w-2xl text-gray-600">
+          Short on stock for a big order? Publish the gap between what you need and what you have, and other
+          nurseries can offer their stock. Only <strong>accepted</strong> offers count as committed supply — and a
+          commitment is <strong>not proof of delivery</strong>. Delivery and payment are arranged directly between
+          the nurseries involved; GreenKarachi does not process any payment.
+        </p>
+      </header>
+
+      {error && <p className="mb-4 border-l-4 border-red-700 bg-red-50 p-3 text-red-900" role="alert">{error}</p>}
+      {message && <p className="mb-4 border-l-4 border-green-700 bg-green-50 p-3 text-green-950" role="status">{message}</p>}
+      {loading && <p className="py-6 text-gray-600" role="status">Loading collaboration...</p>}
+
+      {!loading && (
+        <div className="space-y-12">
+          <section>
+            <h2 className="text-xl font-semibold text-green-950">{editingId ? 'Edit supply gap request' : 'Publish a supply gap request'}</h2>
+            <form onSubmit={submitRequestForm} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-3xl">
+              <label className="block text-sm font-medium text-gray-700">Plant name
+                <input required type="text" maxLength={120} value={form.plantName} placeholder="e.g. Neem"
+                  onChange={(event) => setForm((current) => ({ ...current, plantName: event.target.value }))} className={inputClass} />
+              </label>
+              <label className="block text-sm font-medium text-gray-700">Species (optional)
+                <input type="text" maxLength={120} value={form.species} placeholder="e.g. Azadirachta indica"
+                  onChange={(event) => setForm((current) => ({ ...current, species: event.target.value }))} className={inputClass} />
+              </label>
+              <label className="block text-sm font-medium text-gray-700">Total quantity required
+                <input required type="number" min="1" step="1" value={form.totalRequired}
+                  onChange={(event) => setForm((current) => ({ ...current, totalRequired: event.target.value }))} className={inputClass} />
+              </label>
+              <label className="block text-sm font-medium text-gray-700">Stock you already have
+                <input required type="number" min="0" step="1" value={form.stockAvailable}
+                  onChange={(event) => setForm((current) => ({ ...current, stockAvailable: event.target.value }))} className={inputClass} />
+              </label>
+              <p className="text-sm text-gray-700 sm:col-span-2" role="status">
+                Quantity needed (gap) = {Number(form.totalRequired || 0)} required − {Number(form.stockAvailable || 0)} in stock ={' '}
+                <strong>{formGap} plants</strong>. The server recalculates this when you save.
+              </p>
+              <label className="block text-sm font-medium text-gray-700">Needed by
+                <input required type="date" value={form.neededBy}
+                  onChange={(event) => setForm((current) => ({ ...current, neededBy: event.target.value }))} className={inputClass} />
+              </label>
+              <label className="block text-sm font-medium text-gray-700">Area
+                <input required type="text" maxLength={160} value={form.area} placeholder="e.g. Clifton, Karachi"
+                  onChange={(event) => setForm((current) => ({ ...current, area: event.target.value }))} className={inputClass} />
+              </label>
+              <label className="block text-sm font-medium text-gray-700 sm:col-span-2">Requirements (optional)
+                <textarea rows={2} maxLength={2000} value={form.requirements}
+                  onChange={(event) => setForm((current) => ({ ...current, requirements: event.target.value }))} className={inputClass} />
+              </label>
+              <label className="block text-sm font-medium text-gray-700 sm:col-span-2">Notes (optional)
+                <textarea rows={2} maxLength={2000} value={form.notes}
+                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} className={inputClass} />
+              </label>
+              <div className="flex gap-3 sm:col-span-2">
+                <button disabled={saving} className="rounded bg-green-800 px-4 py-2 font-semibold text-white disabled:opacity-50">
+                  {saving ? 'Saving...' : editingId ? 'Save changes' : 'Publish request'}
+                </button>
+                {editingId && (
+                  <button type="button" disabled={saving} onClick={() => { setEditingId(null); setForm(emptyForm); }}
+                    className="rounded border border-gray-400 px-4 py-2 font-semibold text-gray-800 disabled:opacity-50">Cancel edit</button>
+                )}
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Request Status</h3>
-                <p className="text-sm text-gray-500">Track your requests and offers</p>
-              </div>
+            </form>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-green-950">My supply gap requests</h2>
+            {myRequests.length === 0 && <p className="border-y border-green-200 py-6 text-gray-600">No supply gap requests yet.</p>}
+            <div className="mt-4 divide-y divide-green-200">
+              {myRequests.map((request) => (
+                <article key={request.id} className="py-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-green-950">
+                        {request.plant_name}{request.species ? ` (${request.species})` : ''}
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-600">Needed by {request.needed_by} · {request.area}</p>
+                      {request.requirements && <p className="mt-1 text-sm text-gray-600">Requirements: {request.requirements}</p>}
+                      {request.notes && <p className="mt-1 text-sm text-gray-600">{request.notes}</p>}
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700">{statusLabel(request.status)}</span>
+                  </div>
+                  <Breakdown request={request} />
+                  {(request.offers ?? []).length > 0 && (
+                    <div className="mt-3 space-y-3">
+                      <h4 className="text-sm font-semibold text-green-950">Offers received</h4>
+                      {(request.offers ?? []).map((offer) => (
+                        <div key={offer.id} className="border-l-2 border-green-200 pl-3">
+                          <p className="text-sm text-gray-700">
+                            <strong>{offer.supplier_nursery?.name || 'Another nursery'}</strong> offered {offer.quantity} plants at{' '}
+                            {formatMoney(offer.unit_price)} each — <span className="font-semibold">{statusLabel(offer.status)}</span>
+                          </p>
+                          <p className="text-sm text-gray-600">Availability: {offer.availability_condition}</p>
+                          <p className="text-sm text-gray-600">Delivery: {offer.delivery_arrangement}</p>
+                          {offer.notes && <p className="text-sm text-gray-600">{offer.notes}</p>}
+                          {offer.status === 'ACCEPTED' && (
+                            <p className="text-sm text-gray-600">This supply is committed. It is not proof of delivery — coordinate delivery with the supplier directly.</p>
+                          )}
+                          {offer.status === 'PENDING' && request.status === 'OPEN' && (
+                            <div className="mt-2 flex flex-wrap gap-3">
+                              <button type="button" disabled={saving}
+                                onClick={() => void runAction(() => acceptSupplyOffer(session.token, offer.id), 'Offer accepted. That quantity is now committed supply — this is a commitment, not proof of delivery.')}
+                                className="rounded bg-green-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Accept offer</button>
+                              <button type="button" disabled={saving}
+                                onClick={() => void runAction(() => rejectSupplyOffer(session.token, offer.id), 'Offer rejected.')}
+                                className="rounded border border-red-700 px-3 py-2 text-sm font-semibold text-red-800 disabled:opacity-50">Reject offer</button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {request.status === 'OPEN' && (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <button type="button" disabled={saving} onClick={() => startEditing(request)}
+                        className="rounded border border-gray-400 px-3 py-2 text-sm font-semibold text-gray-800 disabled:opacity-50">Edit request</button>
+                      <button type="button" disabled={saving}
+                        onClick={() => void runAction(() => changeSupplyGapRequestStatus(session.token, request.id, 'CLOSED'), 'Request closed. It no longer accepts offers.')}
+                        className="rounded border border-gray-400 px-3 py-2 text-sm font-semibold text-gray-800 disabled:opacity-50">Close request</button>
+                      <button type="button" disabled={saving}
+                        onClick={() => void runAction(() => changeSupplyGapRequestStatus(session.token, request.id, 'CANCELLED'), 'Request cancelled.')}
+                        className="rounded border border-red-700 px-3 py-2 text-sm font-semibold text-red-800 disabled:opacity-50">Cancel request</button>
+                    </div>
+                  )}
+                </article>
+              ))}
             </div>
-            
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <p className="text-green-600 font-medium">Active: 3</p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-green-950">Open requests from other nurseries</h2>
+            <p className="mt-1 text-sm text-gray-600">Offer stock you have available. Your offer stays pending — and does not count as committed supply — until the requesting nursery accepts it.</p>
+            {openRequests.length === 0 && <p className="border-y border-green-200 py-6 text-gray-600">No open requests from other nurseries right now.</p>}
+            <div className="mt-4 divide-y divide-green-200">
+              {openRequests.map((request) => {
+                const values = offerForms[request.id] ?? emptyOfferForm;
+                const myPending = (request.offers ?? []).find((offer) => offer.status === 'PENDING');
+                return (
+                  <article key={request.id} className="py-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-green-950">
+                          {request.plant_name}{request.species ? ` (${request.species})` : ''} — {request.requester_nursery?.name || 'Another nursery'}
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-600">Needed by {request.needed_by} · {request.area}</p>
+                        {request.requirements && <p className="mt-1 text-sm text-gray-600">Requirements: {request.requirements}</p>}
+                        {request.notes && <p className="mt-1 text-sm text-gray-600">{request.notes}</p>}
+                      </div>
+                      <span className="text-xs font-semibold text-gray-700">{statusLabel(request.status)}</span>
+                    </div>
+                    <Breakdown request={request} />
+                    {myPending ? (
+                      <p className="mt-3 text-sm text-gray-700">
+                        Your pending offer: {myPending.quantity} plants at {formatMoney(myPending.unit_price)} each. You can withdraw it from “My offers” below.
+                      </p>
+                    ) : (
+                      <form className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-3xl"
+                        onSubmit={(event) => { event.preventDefault(); void submitOffer(request); }}>
+                        <label className="text-sm font-medium text-gray-700">Quantity offered (plants)
+                          <input required type="number" min="1" step="1" value={values.quantity}
+                            onChange={(event) => setOfferField(request.id, 'quantity', event.target.value)} className={inputClass} />
+                        </label>
+                        <label className="text-sm font-medium text-gray-700">Unit price (PKR)
+                          <input required type="number" min="0.01" step="0.01" value={values.unitPrice}
+                            onChange={(event) => setOfferField(request.id, 'unitPrice', event.target.value)} className={inputClass} />
+                        </label>
+                        <label className="text-sm font-medium text-gray-700">Availability / condition
+                          <input required type="text" maxLength={500} value={values.availabilityCondition} placeholder="e.g. Ready now, 3-4 ft, in grow bags"
+                            onChange={(event) => setOfferField(request.id, 'availabilityCondition', event.target.value)} className={inputClass} />
+                        </label>
+                        <label className="text-sm font-medium text-gray-700">Delivery arrangement
+                          <input required type="text" maxLength={500} value={values.deliveryArrangement} placeholder="e.g. We deliver within 3 days"
+                            onChange={(event) => setOfferField(request.id, 'deliveryArrangement', event.target.value)} className={inputClass} />
+                        </label>
+                        <label className="text-sm font-medium text-gray-700 sm:col-span-2">Notes (optional)
+                          <input type="text" maxLength={2000} value={values.notes}
+                            onChange={(event) => setOfferField(request.id, 'notes', event.target.value)} className={inputClass} />
+                        </label>
+                        <div className="sm:col-span-2">
+                          <button disabled={saving} className="rounded bg-green-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Submit offer</button>
+                        </div>
+                      </form>
+                    )}
+                  </article>
+                );
+              })}
             </div>
-          </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-green-950">My offers</h2>
+            {myOffers.length === 0 && <p className="border-y border-green-200 py-6 text-gray-600">You have not offered stock on any request yet.</p>}
+            <div className="mt-4 divide-y divide-green-200">
+              {myOffers.map((offer) => (
+                <article key={offer.id} className="py-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-green-950">{offer.request?.plant_name || 'Supply gap request'}</h3>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {offer.quantity} plants at {formatMoney(offer.unit_price)} each
+                        {offer.request?.area ? ` · ${offer.request.area}` : ''}
+                        {offer.request?.needed_by ? ` · needed by ${offer.request.needed_by}` : ''}
+                      </p>
+                      <p className="text-sm text-gray-600">Availability: {offer.availability_condition}</p>
+                      <p className="text-sm text-gray-600">Delivery: {offer.delivery_arrangement}</p>
+                      {offer.status === 'ACCEPTED' && (
+                        <p className="mt-1 text-sm text-gray-600">Accepted: this is committed supply, not proof of delivery. Coordinate delivery and payment with the requesting nursery directly.</p>
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700">{statusLabel(offer.status)}</span>
+                  </div>
+                  {offer.status === 'PENDING' && (
+                    <div className="mt-3">
+                      <button type="button" disabled={saving}
+                        onClick={() => void runAction(() => withdrawSupplyOffer(session.token, offer.id), 'Offer withdrawn. It no longer counts toward this request.')}
+                        className="rounded border border-red-700 px-3 py-2 text-sm font-semibold text-red-800 disabled:opacity-50">Withdraw offer</button>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
-      </div>
+      )}
     </section>
   );
 };
