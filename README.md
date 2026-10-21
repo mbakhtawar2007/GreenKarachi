@@ -168,6 +168,12 @@ Phase 8 connects the Phase 4–7 workflows with private messaging and in-app not
 
 Apply `server/supabase/migrations/20261021_phase8_conversations_notifications.sql` after the Phase 7 migration. The new tables (`conversations`, `conversation_messages`, `notifications`) have RLS enabled with no permissive policies: they are reachable only through the API server's service-role client after its authentication and participant checks, so private messages and notifications are never publicly accessible.
 
+## Release Readiness (Phase 9)
+
+Phase 9 audited the app against every phase's acceptance criteria, ran the full check suite (145/145 server tests pass; client typecheck and production build clean; the only server typecheck error is the pre-existing Prisma client-generation issue that also occurs on `main` in network-restricted environments), and completed a security review (no committed secrets, server-enforced authorization on every protected route group, money stored as exact decimals, no payment behavior anywhere). It also fixed a missing `.gitignore`, a missing `client/.env.example`, a missing `DATABASE_URL` entry in the env examples, and a broken server `npm start` script.
+
+**Live deployment is pending the project owner's go-ahead:** the Supabase project is paused and the Phase 3–8 migrations have not been applied. The complete, ordered deployment procedure — environment variables, migration order, server/client deploy steps, health check, the end-to-end Neem demo walkthrough, backup/rollback notes, and the release checklist separating locally verified items from live-only ones — is in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Technology Stack
 
 ### Frontend
