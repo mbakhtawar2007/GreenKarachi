@@ -13,6 +13,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const catalog_1 = __importDefault(require("./routes/catalog"));
 const quotes_1 = __importDefault(require("./routes/quotes"));
 const collaboration_1 = __importDefault(require("./routes/collaboration"));
+const projects_1 = __importDefault(require("./routes/projects"));
 const app = (0, express_1.default)();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? env_1.config.PORT);
 const allowedOrigins = env_1.config.CORS_ORIGIN.split(',').map((origin) => origin.trim());
@@ -55,6 +56,7 @@ app.use('/api/auth', auth_1.default);
 app.use('/api/catalog/listings', catalog_1.default);
 app.use('/api/quotes', quotes_1.default);
 app.use('/api/collaboration', collaboration_1.default);
+app.use('/api/projects', projects_1.default);
 app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
