@@ -12,6 +12,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import InventoryPage from './pages/InventoryPage';
+import QuotesOrdersPage from './pages/QuotesOrdersPage';
 
 export type AuthUser = {
   id: string;
@@ -60,6 +61,9 @@ const App: React.FC = () => {
           <Route path="register" element={<RegisterPage onLogin={handleLogin} />} />
           <Route path="inventory" element={session?.user.roles.includes('NURSERY_OWNER')
             ? <InventoryPage session={session} />
+            : <Navigate to="/login" replace />} />
+          <Route path="quotes" element={session && (session.user.roles.includes('BUYER') || session.user.roles.includes('NURSERY_OWNER'))
+            ? <QuotesOrdersPage session={session} />
             : <Navigate to="/login" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

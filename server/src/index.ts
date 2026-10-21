@@ -8,6 +8,7 @@ import net from 'node:net';
 import { config } from './config/env';
 import authRoutes from './routes/auth';
 import catalogRoutes from './routes/catalog';
+import quoteRoutes from './routes/quotes';
 
 const app: Express = express();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? config.PORT);
@@ -56,6 +57,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/catalog/listings', catalogRoutes);
+app.use('/api/quotes', quoteRoutes);
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
