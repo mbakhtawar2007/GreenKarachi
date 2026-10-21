@@ -33,6 +33,11 @@ const Navbar: React.FC<NavbarProps> = ({ session, onLogout }) => {
                 Inventory
               </Link>
             )}
+            {session && (session.user.roles.includes('BUYER') || session.user.roles.includes('NURSERY_OWNER')) && (
+              <Link to="/quotes" className="text-green-700 hover:text-green-900 transition-colors">
+                Quotes &amp; Orders
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -53,6 +58,7 @@ const Navbar: React.FC<NavbarProps> = ({ session, onLogout }) => {
           <Link to="/marketplace" className="whitespace-nowrap text-green-800">Marketplace</Link>
           <Link to="/nursery-directory" className="whitespace-nowrap text-green-800">Nurseries</Link>
           {session?.user.roles.includes('NURSERY_OWNER') && <Link to="/inventory" className="whitespace-nowrap text-green-800">Inventory</Link>}
+          {session && (session.user.roles.includes('BUYER') || session.user.roles.includes('NURSERY_OWNER')) && <Link to="/quotes" className="whitespace-nowrap text-green-800">Quotes &amp; Orders</Link>}
         </div>
       </div>
     </nav>

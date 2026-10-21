@@ -134,6 +134,10 @@ The API is mounted at `/api/catalog/listings`. Public listing search accepts `qu
 
 To try owner inventory, register/sign in with the Nursery Owner role, open **Inventory**, save the nursery profile, and then add listings. Image URLs are optional and limited to HTTP/HTTPS; uploaded-file storage is not configured in this phase.
 
+## Quotations and Orders (Phase 4)
+
+Buyers request quotations for a listing (plant, quantity, delivery area/date, and notes), nurseries respond with a unit price, offered quantity, delivery charge/terms, and a validity deadline, and an order is created only when the buyer accepts a still-valid quotation. A quote request is not an accepted order, and no payment is processed or claimed by GreenKarachi. Accepted orders store immutable snapshots of the agreed price, quantity, buyer, supplier, delivery details, and terms; acceptance reserves stock with a conditional update, duplicate submissions are guarded by an idempotency key and open-request checks, and invalid status transitions are rejected on the server. Apply `server/supabase/migrations/20261020_phase4_quotations_orders.sql` after the Phase 3 migration. The API is mounted at `/api/quotes` (`/requests`, `/requests/mine`, `/requests/incoming`, `/requests/:id/quotation`, `/requests/:id/accept`, `/requests/:id/decline`, `/requests/:id/cancel`, `/requests/:id/decline-request`, `/orders/mine`, `/orders/incoming`, `/orders/:id/status`), and signed-in buyers and nursery owners use it from **Quotes & Orders** in the client. In-app notifications are not part of this phase because the current architecture has no notification system yet (planned for Phase 8).
+
 ## Technology Stack
 
 ### Frontend
