@@ -16,6 +16,7 @@ import {
   type QuoteRequest
 } from '../api/quotes';
 import type { AuthSession } from '../App';
+import MessageButton from '../components/MessageButton';
 
 const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
 const formatMoney = (value: string | number) => currency.format(Number(value));
@@ -217,6 +218,7 @@ const QuotesOrdersPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                       </dl>
                     )}
                     <div className="mt-3 flex flex-wrap gap-3">
+                      <MessageButton token={session.token} refType="QUOTE_REQUEST" refId={request.id} label="Message nursery" />
                       {request.status === 'QUOTED' && quotation && !expired && (
                         <button type="button" disabled={saving} onClick={() => void runAction(() => acceptQuotation(session.token, request.id), 'Order confirmed. The agreed price, quantity, and terms are saved on the order. No payment has been taken.')}
                           className="rounded bg-green-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Accept quotation &amp; create order</button>
@@ -269,6 +271,9 @@ const QuotesOrdersPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                       Your quotation: {formatMoney(quotation.unit_price)} × {quotation.quantity} plants, delivery {formatMoney(quotation.delivery_charge)}, valid until {formatDateTime(quotation.valid_until)}.
                     </p>
                   )}
+                  <div className="mt-3">
+                    <MessageButton token={session.token} refType="QUOTE_REQUEST" refId={request.id} label="Message buyer" />
+                  </div>
                   {request.status === 'PENDING' && (
                     <form className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5" onSubmit={(event) => { event.preventDefault(); void submitQuotation(request); }}>
                       {([
@@ -324,6 +329,9 @@ const QuotesOrdersPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                   <div><dt className="text-gray-500">Total (no payment taken)</dt><dd className="font-semibold">{formatMoney(order.total)}</dd></div>
                 </dl>
                 {order.terms && <p className="mt-2 text-sm text-gray-600">Terms: {order.terms}</p>}
+                <div className="mt-3">
+                  <MessageButton token={session.token} refType="ORDER" refId={order.id} label="Message about this order" />
+                </div>
                 {order.status === 'CONFIRMED' && (
                   <div className="mt-3 flex flex-wrap gap-3">
                     {isNursery && order.nursery_user_id === session.user.id && (

@@ -16,6 +16,8 @@ const collaboration_1 = __importDefault(require("./routes/collaboration"));
 const projects_1 = __importDefault(require("./routes/projects"));
 const admin_1 = __importDefault(require("./routes/admin"));
 const reports_1 = __importDefault(require("./routes/reports"));
+const conversations_1 = __importDefault(require("./routes/conversations"));
+const notifications_1 = __importDefault(require("./routes/notifications"));
 const app = (0, express_1.default)();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? env_1.config.PORT);
 const allowedOrigins = env_1.config.CORS_ORIGIN.split(',').map((origin) => origin.trim());
@@ -61,6 +63,8 @@ app.use('/api/collaboration', collaboration_1.default);
 app.use('/api/projects', projects_1.default);
 app.use('/api/admin', admin_1.default);
 app.use('/api/reports', reports_1.default);
+app.use('/api/conversations', conversations_1.default);
+app.use('/api/notifications', notifications_1.default);
 app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: 'ok',

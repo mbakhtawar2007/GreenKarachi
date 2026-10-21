@@ -15,15 +15,15 @@ export declare const projectRequirementInputSchema: z.ZodObject<{
     quantity: z.ZodNumber;
     notes: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, "strip", z.ZodTypeAny, {
-    plantName: string;
     quantity: number;
-    species?: string | undefined;
+    plantName: string;
     notes?: string | undefined;
+    species?: string | undefined;
 }, {
-    plantName: string;
     quantity: number;
-    species?: string | undefined;
+    plantName: string;
     notes?: string | undefined;
+    species?: string | undefined;
 }>;
 export declare const projectInputSchema: z.ZodEffects<z.ZodObject<{
     title: z.ZodString;
@@ -42,46 +42,46 @@ export declare const projectInputSchema: z.ZodEffects<z.ZodObject<{
         quantity: z.ZodNumber;
         notes: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     }, "strip", z.ZodTypeAny, {
-        plantName: string;
         quantity: number;
-        species?: string | undefined;
+        plantName: string;
         notes?: string | undefined;
+        species?: string | undefined;
     }, {
-        plantName: string;
         quantity: number;
-        species?: string | undefined;
+        plantName: string;
         notes?: string | undefined;
+        species?: string | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     title: string;
     description: string;
     location: string;
+    requirements: {
+        quantity: number;
+        plantName: string;
+        notes?: string | undefined;
+        species?: string | undefined;
+    }[];
     startDate: string;
     endDate: string;
     treeTarget: number;
     photoUrls: string[];
     contactPreference: "PLATFORM_ONLY" | "EMAIL" | "PHONE" | "EMAIL_AND_PHONE";
-    requirements: {
-        plantName: string;
-        quantity: number;
-        species?: string | undefined;
-        notes?: string | undefined;
-    }[];
     fundingTarget?: number | null | undefined;
     contactDetails?: string | undefined;
 }, {
     title: string;
     description: string;
     location: string;
+    requirements: {
+        quantity: number;
+        plantName: string;
+        notes?: string | undefined;
+        species?: string | undefined;
+    }[];
     startDate: string;
     endDate: string;
     treeTarget: number;
-    requirements: {
-        plantName: string;
-        quantity: number;
-        species?: string | undefined;
-        notes?: string | undefined;
-    }[];
     fundingTarget?: number | null | undefined;
     photoUrls?: string[] | undefined;
     contactPreference?: "PLATFORM_ONLY" | "EMAIL" | "PHONE" | "EMAIL_AND_PHONE" | undefined;
@@ -90,32 +90,32 @@ export declare const projectInputSchema: z.ZodEffects<z.ZodObject<{
     title: string;
     description: string;
     location: string;
+    requirements: {
+        quantity: number;
+        plantName: string;
+        notes?: string | undefined;
+        species?: string | undefined;
+    }[];
     startDate: string;
     endDate: string;
     treeTarget: number;
     photoUrls: string[];
     contactPreference: "PLATFORM_ONLY" | "EMAIL" | "PHONE" | "EMAIL_AND_PHONE";
-    requirements: {
-        plantName: string;
-        quantity: number;
-        species?: string | undefined;
-        notes?: string | undefined;
-    }[];
     fundingTarget?: number | null | undefined;
     contactDetails?: string | undefined;
 }, {
     title: string;
     description: string;
     location: string;
+    requirements: {
+        quantity: number;
+        plantName: string;
+        notes?: string | undefined;
+        species?: string | undefined;
+    }[];
     startDate: string;
     endDate: string;
     treeTarget: number;
-    requirements: {
-        plantName: string;
-        quantity: number;
-        species?: string | undefined;
-        notes?: string | undefined;
-    }[];
     fundingTarget?: number | null | undefined;
     photoUrls?: string[] | undefined;
     contactPreference?: "PLATFORM_ONLY" | "EMAIL" | "PHONE" | "EMAIL_AND_PHONE" | undefined;
@@ -124,9 +124,9 @@ export declare const projectInputSchema: z.ZodEffects<z.ZodObject<{
 export declare const projectStatusInputSchema: z.ZodObject<{
     status: z.ZodEnum<["PUBLISHED", "COMPLETED", "ARCHIVED"]>;
 }, "strip", z.ZodTypeAny, {
-    status: "PUBLISHED" | "COMPLETED" | "ARCHIVED";
+    status: "ARCHIVED" | "PUBLISHED" | "COMPLETED";
 }, {
-    status: "PUBLISHED" | "COMPLETED" | "ARCHIVED";
+    status: "ARCHIVED" | "PUBLISHED" | "COMPLETED";
 }>;
 export declare const progressUpdateInputSchema: z.ZodObject<{
     title: z.ZodString;
@@ -135,8 +135,8 @@ export declare const progressUpdateInputSchema: z.ZodObject<{
     photoUrls: z.ZodDefault<z.ZodArray<z.ZodEffects<z.ZodString, string, string>, "many">>;
 }, "strip", z.ZodTypeAny, {
     title: string;
-    photoUrls: string[];
     body: string;
+    photoUrls: string[];
     treesPlanted?: number | null | undefined;
 }, {
     title: string;
@@ -150,24 +150,24 @@ export declare const pledgeInputSchema: z.ZodEffects<z.ZodObject<{
     quantity: z.ZodNullable<z.ZodOptional<z.ZodNumber>>;
     description: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
 }, "strip", z.ZodTypeAny, {
-    pledgeType: "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME" | "OTHER";
-    quantity?: number | null | undefined;
+    pledgeType: "OTHER" | "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME";
     description?: string | undefined;
+    quantity?: number | null | undefined;
     amount?: number | null | undefined;
 }, {
-    pledgeType: "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME" | "OTHER";
-    quantity?: number | null | undefined;
+    pledgeType: "OTHER" | "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME";
     description?: string | undefined;
+    quantity?: number | null | undefined;
     amount?: number | null | undefined;
 }>, {
-    pledgeType: "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME" | "OTHER";
-    quantity?: number | null | undefined;
+    pledgeType: "OTHER" | "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME";
     description?: string | undefined;
+    quantity?: number | null | undefined;
     amount?: number | null | undefined;
 }, {
-    pledgeType: "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME" | "OTHER";
-    quantity?: number | null | undefined;
+    pledgeType: "OTHER" | "FUNDS" | "TREES" | "MATERIALS" | "VOLUNTEER_TIME";
     description?: string | undefined;
+    quantity?: number | null | undefined;
     amount?: number | null | undefined;
 }>;
 export declare const projectFilterSchema: z.ZodEffects<z.ZodObject<{
@@ -183,38 +183,38 @@ export declare const projectFilterSchema: z.ZodEffects<z.ZodObject<{
     status: "PUBLISHED" | "COMPLETED";
     page: number;
     pageSize: number;
+    query?: string | undefined;
     species?: string | undefined;
     location?: string | undefined;
-    query?: string | undefined;
     minTreeTarget?: number | undefined;
     maxTreeTarget?: number | undefined;
 }, {
     status?: "PUBLISHED" | "COMPLETED" | undefined;
-    species?: string | undefined;
-    location?: string | undefined;
-    query?: string | undefined;
-    minTreeTarget?: number | undefined;
-    maxTreeTarget?: number | undefined;
     page?: number | undefined;
     pageSize?: number | undefined;
+    query?: string | undefined;
+    species?: string | undefined;
+    location?: string | undefined;
+    minTreeTarget?: number | undefined;
+    maxTreeTarget?: number | undefined;
 }>, {
     status: "PUBLISHED" | "COMPLETED";
     page: number;
     pageSize: number;
+    query?: string | undefined;
     species?: string | undefined;
     location?: string | undefined;
-    query?: string | undefined;
     minTreeTarget?: number | undefined;
     maxTreeTarget?: number | undefined;
 }, {
     status?: "PUBLISHED" | "COMPLETED" | undefined;
-    species?: string | undefined;
-    location?: string | undefined;
-    query?: string | undefined;
-    minTreeTarget?: number | undefined;
-    maxTreeTarget?: number | undefined;
     page?: number | undefined;
     pageSize?: number | undefined;
+    query?: string | undefined;
+    species?: string | undefined;
+    location?: string | undefined;
+    minTreeTarget?: number | undefined;
+    maxTreeTarget?: number | undefined;
 }>;
 export type ProjectRequirementInput = z.infer<typeof projectRequirementInputSchema>;
 export type ProjectInput = z.infer<typeof projectInputSchema>;

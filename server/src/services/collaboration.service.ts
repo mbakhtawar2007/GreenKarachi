@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { getSupabaseClient } from '../lib/auth';
+import {
+  createNotification,
+  supplyOfferReceivedNotification,
+  supplyOfferStatusNotification
+} from './notifications.service';
 
 // Phase 5 domain rules.
 // Nursery-to-nursery supply-gap collaboration is GreenKarachi's core
@@ -452,6 +457,14 @@ export const submitSupplyOffer = async (
     throw new Error(error.message);
   }
   await recordOfferEvent(supabase, data, supplierUserId, null, 'PENDING');
+  // Phase 8: tell the requesting nursery an offer arrived (failure-safe).
+  await createNotification(supabase, supplyOfferReceivedNotification({
+    recipientUserId: request.requester_user_id,
+    actorUserId: supplierUserId,
+    requestId,
+    plantName: request.plant_name,
+    quantity: input.quantity
+  }));
   return data;
 };
 
@@ -509,6 +522,15 @@ export const rejectSupplyOffer = async (
     throw new Error('You do not have permission to reject this offer.');
   }
   const updated = await setOfferStatus(supabase, offer, requesterUserId, 'REJECTED');
+  // Phase 8: tell the supplier their offer was rejected (failure-safe).
+  await createNotification(supabase, supplyOfferStatusNotification({
+    recipientUserId: offer.supplier_user_id,
+    actorUserId: requesterUserId,
+    requestId: request.id as string,
+    plantName: request.plant_name,
+    quantity: offer.quantity,
+    status: 'REJECTED'
+  }));
   return { offer: updated, request: await enrichRequest(supabase, request, requesterUserId) };
 };
 
@@ -525,6 +547,16 @@ export const withdrawSupplyOffer = async (
   // other nurseries are relying on, so it cannot be pulled back here.
   const updated = await setOfferStatus(supabase, offer, supplierUserId, 'WITHDRAWN');
   const request = await getSupplyGapRequest(supabase, offer.request_id);
+  // Phase 8: tell the requesting nursery the offer was withdrawn
+  // (failure-safe follow-up).
+  await createNotification(supabase, supplyOfferStatusNotification({
+    recipientUserId: request.requester_user_id,
+    actorUserId: supplierUserId,
+    requestId: request.id as string,
+    plantName: request.plant_name,
+    quantity: offer.quantity,
+    status: 'WITHDRAWN'
+  }));
   return { offer: updated, request: await enrichRequest(supabase, request, supplierUserId) };
 };
 
@@ -594,6 +626,16 @@ export const acceptSupplyOffer = async (
 
     try {
       const updated = await setOfferStatus(supabase, offer, requesterUserId, 'ACCEPTED');
+      // Phase 8: tell the supplier their offer was accepted. Delivery is
+      // failure-safe, so it cannot trigger the compensating rollback.
+      await createNotification(supabase, supplyOfferStatusNotification({
+        recipientUserId: offer.supplier_user_id,
+        actorUserId: requesterUserId,
+        requestId: request.id as string,
+        plantName: request.plant_name,
+        quantity: offer.quantity,
+        status: 'ACCEPTED'
+      }));
       const fresh = await getSupplyGapRequest(supabase, request.id);
       return { offer: updated, request: await enrichRequest(supabase, fresh, requesterUserId) };
     } catch (error) {

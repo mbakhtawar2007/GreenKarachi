@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.changeOrderStatus = exports.getNurseryOrders = exports.getBuyerOrders = exports.acceptQuotation = exports.declineQuoteRequest = exports.cancelQuoteRequest = exports.declineQuotation = exports.respondWithQuotation = exports.getQuoteRequestForParticipant = exports.getNurseryQuoteRequests = exports.getBuyerQuoteRequests = exports.createQuoteRequest = exports.canChangeOrderStatus = exports.isOrderParticipant = exports.isQuoteParticipant = exports.findOpenDuplicate = exports.openQuoteRequestStatuses = exports.hasSufficientStock = exports.computeOrderTotals = exports.roundMoney = exports.isQuotationExpired = exports.canTransitionOrder = exports.canTransitionQuoteRequest = exports.orderTransitions = exports.quoteRequestTransitions = exports.orderStatusInputSchema = exports.quotationInputSchema = exports.quoteRequestInputSchema = exports.orderStatuses = exports.quotationStatuses = exports.quoteRequestStatuses = void 0;
 const zod_1 = require("zod");
 const auth_1 = require("../lib/auth");
+const notifications_service_1 = require("./notifications.service");
 // Phase 4 domain rules.
 // A quote request is NOT an accepted order. An order exists only after a buyer
 // accepts a nursery quotation, and it stores immutable snapshots of the agreed
@@ -178,6 +179,15 @@ const createQuoteRequest = async (buyerUserId, input, supabase = (0, auth_1.getS
         }
         throw new Error(error.message);
     }
+    // Phase 8: tell the nursery a request arrived (failure-safe follow-up).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.quoteRequestReceivedNotification)({
+        recipientUserId: listing.nursery_user_id,
+        actorUserId: buyerUserId,
+        requestId: data.id,
+        plantName: listing.name,
+        quantity: input.quantity,
+        deliveryArea: input.deliveryArea
+    }));
     return data;
 };
 exports.createQuoteRequest = createQuoteRequest;
@@ -256,6 +266,14 @@ const respondWithQuotation = async (nurseryUserId, requestId, input, supabase = 
         .eq('id', requestId);
     if (updateError)
         throw new Error(updateError.message);
+    // Phase 8: tell the buyer their quotation arrived (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.quotationReceivedNotification)({
+        recipientUserId: request.buyer_user_id,
+        actorUserId: nurseryUserId,
+        requestId,
+        plantName: listing.name,
+        quantity: input.quantity
+    }));
     return data;
 };
 exports.respondWithQuotation = respondWithQuotation;
@@ -276,6 +294,12 @@ const declineQuotation = async (buyerUserId, requestId, supabase = (0, auth_1.ge
         throw new Error('You do not have permission to decline this quotation.');
     await setQuoteRequestStatus(supabase, requestId, request.status, 'DECLINED');
     await supabase.from('quotations').update({ status: 'DECLINED', updated_at: new Date().toISOString() }).eq('quote_request_id', requestId);
+    // Phase 8: tell the nursery the buyer declined (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.quotationDeclinedNotification)({
+        recipientUserId: request.nursery_user_id,
+        actorUserId: buyerUserId,
+        requestId
+    }));
     return getQuoteRequest(supabase, requestId);
 };
 exports.declineQuotation = declineQuotation;
@@ -284,6 +308,12 @@ const cancelQuoteRequest = async (buyerUserId, requestId, supabase = (0, auth_1.
     if (request.buyer_user_id !== buyerUserId)
         throw new Error('You do not have permission to cancel this quote request.');
     await setQuoteRequestStatus(supabase, requestId, request.status, 'CANCELLED');
+    // Phase 8: tell the nursery the request was cancelled (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.quoteRequestCancelledNotification)({
+        recipientUserId: request.nursery_user_id,
+        actorUserId: buyerUserId,
+        requestId
+    }));
     return getQuoteRequest(supabase, requestId);
 };
 exports.cancelQuoteRequest = cancelQuoteRequest;
@@ -293,6 +323,12 @@ const declineQuoteRequest = async (nurseryUserId, requestId, supabase = (0, auth
         throw new Error('You do not have permission to decline this quote request.');
     await setQuoteRequestStatus(supabase, requestId, request.status, 'DECLINED');
     await supabase.from('quotations').update({ status: 'WITHDRAWN', updated_at: new Date().toISOString() }).eq('quote_request_id', requestId);
+    // Phase 8: tell the buyer the nursery declined (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.quoteRequestDeclinedNotification)({
+        recipientUserId: request.buyer_user_id,
+        actorUserId: nurseryUserId,
+        requestId
+    }));
     return getQuoteRequest(supabase, requestId);
 };
 exports.declineQuoteRequest = declineQuoteRequest;
@@ -413,6 +449,14 @@ const acceptQuotation = async (buyerUserId, requestId, supabase = (0, auth_1.get
     }
     await supabase.from('quotations').update({ status: 'ACCEPTED', updated_at: new Date().toISOString() }).eq('id', quotation.id);
     await supabase.from('quote_requests').update({ status: 'ACCEPTED', updated_at: new Date().toISOString() }).eq('id', requestId);
+    // Phase 8: tell the nursery the order was confirmed (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.orderConfirmedNotification)({
+        recipientUserId: request.nursery_user_id,
+        actorUserId: buyerUserId,
+        orderId: order.id,
+        plantName: listing.name,
+        quantity: quotation.quantity
+    }));
     return { ...order, items: [{ listing_id: listing.id, plant_name: listing.name, unit_price: quotation.unit_price, quantity: quotation.quantity, line_total: totals.subtotal }] };
 };
 exports.acceptQuotation = acceptQuotation;
@@ -487,6 +531,18 @@ const changeOrderStatus = async (userId, orderId, target, supabase = (0, auth_1.
             })
                 .eq('id', listing.id);
         }
+    }
+    // Phase 8: tell the other participant about the new order status
+    // (failure-safe follow-up).
+    if (target === 'FULFILLED' || target === 'CANCELLED') {
+        const otherParticipant = order.buyer_user_id === userId ? order.nursery_user_id : order.buyer_user_id;
+        await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.orderStatusNotification)({
+            recipientUserId: otherParticipant,
+            actorUserId: userId,
+            orderId,
+            plantName: order.plant_name,
+            status: target
+        }));
     }
     return data;
 };

@@ -4,6 +4,7 @@ exports.hideListing = exports.listAdminListings = exports.decideNurseryVerificat
 exports.listAuditLog = exports.updateReportStatus = exports.listAdminReports = exports.getMyReports = exports.submitReport = exports.restoreProject = exports.hideProject = exports.listAdminProjects = exports.restoreListing = void 0;
 const zod_1 = require("zod");
 const auth_1 = require("../lib/auth");
+const notifications_service_1 = require("./notifications.service");
 // Phase 7 domain rules.
 // Admins provide the platform's minimum trust and governance controls:
 // they decide user and nursery verification, moderate listings and
@@ -338,6 +339,15 @@ const decideUserVerification = async (actor, targetUserId, input, supabase = (0,
         newState: { verification_status: next.verification_status },
         reason: input.notes
     }));
+    // Phase 8: tell the user their verification status changed. Only the
+    // status is shared — the admin's notes never leave the audit record
+    // (failure-safe follow-up).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.verificationDecisionNotification)({
+        recipientUserId: targetUserId,
+        actorUserId: actor.id,
+        subject: 'USER',
+        status: next.verification_status
+    }));
     return data;
 };
 exports.decideUserVerification = decideUserVerification;
@@ -381,6 +391,13 @@ const suspendUser = async (actor, targetUserId, input, supabase = (0, auth_1.get
         newState: { is_suspended: true },
         reason: input.reason
     }));
+    // Phase 8: tell the user they were suspended, without the admin's
+    // reason (failure-safe follow-up).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.accountSuspensionNotification)({
+        recipientUserId: targetUserId,
+        actorUserId: actor.id,
+        suspended: true
+    }));
     return data;
 };
 exports.suspendUser = suspendUser;
@@ -416,6 +433,12 @@ const reactivateUser = async (actor, targetUserId, notes, supabase = (0, auth_1.
         previousState: { is_suspended: true },
         newState: { is_suspended: false },
         reason: notes
+    }));
+    // Phase 8: tell the user they can sign in again (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.accountSuspensionNotification)({
+        recipientUserId: targetUserId,
+        actorUserId: actor.id,
+        suspended: false
     }));
     return data;
 };
@@ -479,6 +502,14 @@ const decideNurseryVerification = async (actor, nurseryUserId, input, supabase =
         previousState: { verification_status: currentStatus, is_verified: nursery.is_verified },
         newState: { verification_status: next.verification_status, is_verified: next.is_verified },
         reason: input.notes
+    }));
+    // Phase 8: tell the nursery owner the decision, status only — the
+    // admin's notes stay in the audit record (failure-safe follow-up).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.verificationDecisionNotification)({
+        recipientUserId: nurseryUserId,
+        actorUserId: actor.id,
+        subject: 'NURSERY',
+        status: next.verification_status
     }));
     return data;
 };
@@ -544,6 +575,21 @@ const setContentModeration = async (actor, table, id, toStatus, reason, audit, s
         newState: { moderation_status: toStatus },
         reason
     }));
+    // Phase 8: tell the owner their content was hidden or restored. The
+    // notification names their own content and never carries the
+    // moderator's reason (failure-safe follow-up).
+    const ownerUserId = row[audit.ownerColumn] ?? null;
+    if (ownerUserId) {
+        const updated = data;
+        await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.contentModerationNotification)({
+            recipientUserId: ownerUserId,
+            actorUserId: actor.id,
+            kind: audit.targetType,
+            targetId: id,
+            name: String(updated.name ?? updated.title ?? 'your content'),
+            hidden: toStatus === 'HIDDEN'
+        }));
+    }
     return data;
 };
 const hideListing = async (actor, listingId, input, supabase = (0, auth_1.getSupabaseClient)()) => setContentModeration(actor, 'plant_listings', listingId, 'HIDDEN', input.reason, { action: 'LISTING_MODERATION_CHANGED', targetType: 'LISTING', ownerColumn: 'nursery_user_id' }, supabase);
@@ -699,6 +745,14 @@ const updateReportStatus = async (actor, reportId, input, supabase = (0, auth_1.
         previousState: { status: currentStatus },
         newState: { status: input.status, target_type: report.target_type, target_id: report.target_id },
         reason: input.resolutionNotes
+    }));
+    // Phase 8: tell the reporter the outcome, status only — resolution
+    // notes stay in the admin record (failure-safe follow-up).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.reportUpdatedNotification)({
+        recipientUserId: report.reporter_user_id,
+        actorUserId: actor.id,
+        reportId,
+        status: input.status
     }));
     return data;
 };

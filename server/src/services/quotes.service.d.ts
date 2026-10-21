@@ -14,19 +14,19 @@ export declare const quoteRequestInputSchema: z.ZodObject<{
     notes: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     idempotencyKey: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    listingId?: string;
-    quantity?: number;
-    deliveryArea?: string;
-    deliveryDate?: string;
-    notes?: string;
-    idempotencyKey?: string;
+    listingId: string;
+    quantity: number;
+    deliveryArea: string;
+    deliveryDate: string;
+    notes?: string | undefined;
+    idempotencyKey?: string | undefined;
 }, {
-    listingId?: string;
-    quantity?: number;
-    deliveryArea?: string;
-    deliveryDate?: string;
-    notes?: string;
-    idempotencyKey?: string;
+    listingId: string;
+    quantity: number;
+    deliveryArea: string;
+    deliveryDate: string;
+    notes?: string | undefined;
+    idempotencyKey?: string | undefined;
 }>;
 export declare const quotationInputSchema: z.ZodObject<{
     unitPrice: z.ZodEffects<z.ZodNumber, number, number>;
@@ -35,24 +35,24 @@ export declare const quotationInputSchema: z.ZodObject<{
     terms: z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodLiteral<"">]>;
     validUntil: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    unitPrice?: number;
-    quantity?: number;
-    deliveryCharge?: number;
-    terms?: string;
-    validUntil?: string;
+    unitPrice: number;
+    quantity: number;
+    deliveryCharge: number;
+    validUntil: string;
+    terms?: string | undefined;
 }, {
-    unitPrice?: number;
-    quantity?: number;
-    deliveryCharge?: number;
-    terms?: string;
-    validUntil?: string;
+    unitPrice: number;
+    quantity: number;
+    deliveryCharge: number;
+    validUntil: string;
+    terms?: string | undefined;
 }>;
 export declare const orderStatusInputSchema: z.ZodObject<{
     status: z.ZodEnum<["FULFILLED", "CANCELLED"]>;
 }, "strip", z.ZodTypeAny, {
-    status?: "CANCELLED" | "FULFILLED";
+    status: "FULFILLED" | "CANCELLED";
 }, {
-    status?: "CANCELLED" | "FULFILLED";
+    status: "FULFILLED" | "CANCELLED";
 }>;
 export type QuoteRequestInput = z.infer<typeof quoteRequestInputSchema>;
 export type QuotationInput = z.infer<typeof quotationInputSchema>;

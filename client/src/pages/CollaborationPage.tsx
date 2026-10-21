@@ -14,6 +14,7 @@ import {
   type SupplyOffer
 } from '../api/collaboration';
 import type { AuthSession } from '../App';
+import MessageButton from '../components/MessageButton';
 
 const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
 const formatMoney = (value: string | number) => currency.format(Number(value));
@@ -275,6 +276,9 @@ const CollaborationPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                     <span className="text-xs font-semibold text-gray-700">{statusLabel(request.status)}</span>
                   </div>
                   <Breakdown request={request} />
+                  <div className="mt-3">
+                    <MessageButton token={session.token} refType="SUPPLY_GAP_REQUEST" refId={request.id} label="Message participants" />
+                  </div>
                   {(request.offers ?? []).length > 0 && (
                     <div className="mt-3 space-y-3">
                       <h4 className="text-sm font-semibold text-green-950">Offers received</h4>
@@ -344,9 +348,14 @@ const CollaborationPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                     </div>
                     <Breakdown request={request} />
                     {myPending ? (
-                      <p className="mt-3 text-sm text-gray-700">
-                        Your pending offer: {myPending.quantity} plants at {formatMoney(myPending.unit_price)} each. You can withdraw it from “My offers” below.
-                      </p>
+                      <>
+                        <p className="mt-3 text-sm text-gray-700">
+                          Your pending offer: {myPending.quantity} plants at {formatMoney(myPending.unit_price)} each. You can withdraw it from “My offers” below.
+                        </p>
+                        <div className="mt-3">
+                          <MessageButton token={session.token} refType="SUPPLY_GAP_REQUEST" refId={request.id} label="Message requester" />
+                        </div>
+                      </>
                     ) : (
                       <form className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-3xl"
                         onSubmit={(event) => { event.preventDefault(); void submitOffer(request); }}>
@@ -402,6 +411,9 @@ const CollaborationPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                       )}
                     </div>
                     <span className="text-xs font-semibold text-gray-700">{statusLabel(offer.status)}</span>
+                  </div>
+                  <div className="mt-3">
+                    <MessageButton token={session.token} refType="SUPPLY_GAP_REQUEST" refId={offer.request_id} label="Message requester" />
                   </div>
                   {offer.status === 'PENDING' && (
                     <div className="mt-3">

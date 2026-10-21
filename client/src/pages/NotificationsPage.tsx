@@ -1,0 +1,199 @@
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  getMyNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type AppNotification
+} from '../api/notifications';
+import type { AuthSession } from '../App';
+
+type NotificationsPageProps = {
+  session: AuthSession;
+};
+
+const formatDateTime = (value: string): string =>
+  new Intl.DateTimeFormat('en-PK', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+
+const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = React.useState<AppNotification[]>([]);
+  const [page, setPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [unreadCount, setUnreadCount] = React.useState(0);
+  const [unreadOnly, setUnreadOnly] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [message, setMessage] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+
+  const load = React.useCallback(
+    async (targetPage: number, onlyUnread: boolean) => {
+      setLoading(true);
+      setError('');
+      try {
+        const data = await getMyNotifications(session.token, targetPage, onlyUnread);
+        setNotifications(data.notifications);
+        setPage(data.pagination.page);
+        setTotalPages(data.pagination.totalPages);
+        setUnreadCount(data.unreadCount);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Could not load notifications.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [session.token]
+  );
+
+  React.useEffect(() => {
+    void load(1, unreadOnly);
+  }, [load, unreadOnly]);
+
+  const openNotification = async (notification: AppNotification): Promise<void> => {
+    if (!notification.is_read) {
+      try {
+        await markNotificationRead(session.token, notification.id);
+        setNotifications((current) =>
+          current.map((item) =>
+            item.id === notification.id ? { ...item, is_read: true, read_at: new Date().toISOString() } : item
+          )
+        );
+        setUnreadCount((current) => Math.max(0, current - 1));
+      } catch {
+        setError('Could not mark the notification as read.');
+        return;
+      }
+    }
+    if (notification.link) navigate(notification.link);
+  };
+
+  const markAllRead = async (): Promise<void> => {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const { updated } = await markAllNotificationsRead(session.token);
+      setMessage(updated > 0 ? `Marked ${updated} notification${updated === 1 ? '' : 's'} as read.` : 'No unread notifications.');
+      await load(page, unreadOnly);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not mark notifications as read.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="py-8 md:py-12">
+      <header className="mb-8 border-b border-green-200 pb-6">
+        <p className="text-sm font-semibold uppercase tracking-wide text-green-700">Notifications</p>
+        <h1 className="mt-2 text-3xl font-bold text-green-950">Your notifications</h1>
+        <p className="mt-2 max-w-2xl text-gray-600">
+          Updates about your quotes, orders, supply offers, pledges, and account. Notifications never include pledge
+          amounts, verification notes, or message text — open the linked record to see details you are allowed to see.
+        </p>
+      </header>
+
+      {error && (
+        <p className="mb-4 border-l-4 border-red-700 bg-red-50 p-3 text-red-900" role="alert">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p className="mb-4 border-l-4 border-green-700 bg-green-50 p-3 text-green-950" role="status">
+          {message}
+        </p>
+      )}
+
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={unreadOnly}
+            onChange={(event) => setUnreadOnly(event.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Unread only
+        </label>
+        <button
+          type="button"
+          disabled={busy || unreadCount === 0}
+          onClick={() => void markAllRead()}
+          className="rounded border border-green-800 px-3 py-2 text-sm font-semibold text-green-900 disabled:opacity-50"
+        >
+          Mark all as read
+        </button>
+        <span className="text-sm text-gray-600" role="status">
+          {unreadCount} unread
+        </span>
+      </div>
+
+      {loading && (
+        <p className="py-6 text-gray-600" role="status">
+          Loading notifications...
+        </p>
+      )}
+      {!loading && notifications.length === 0 && (
+        <p className="border-y border-green-200 py-6 text-gray-600">
+          {unreadOnly ? 'No unread notifications.' : 'No notifications yet. Quote, order, offer, and pledge updates will appear here.'}
+        </p>
+      )}
+      {!loading && notifications.length > 0 && (
+        <div className="divide-y divide-green-200 border-y border-green-200">
+          {notifications.map((notification) => (
+            <article key={notification.id} className={`py-4 ${notification.is_read ? '' : 'bg-green-50'}`}>
+              <button
+                type="button"
+                onClick={() => void openNotification(notification)}
+                className="block w-full px-2 text-left focus:outline-none focus:ring-2 focus:ring-green-300"
+                aria-label={`${notification.is_read ? '' : 'Unread: '}${notification.title}`}
+              >
+                <span className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className={`text-green-950 ${notification.is_read ? 'font-medium' : 'font-bold'}`}>
+                    {!notification.is_read && (
+                      <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-green-700" />
+                    )}
+                    {notification.title}
+                  </span>
+                  <span className="text-xs text-gray-500">{formatDateTime(notification.created_at)}</span>
+                </span>
+                <span className="mt-1 block text-sm text-gray-700">{notification.body}</span>
+                {notification.link && <span className="mt-1 block text-sm font-semibold text-green-800">Open →</span>}
+              </button>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {!loading && totalPages > 1 && (
+        <nav className="mt-6 flex items-center gap-4" aria-label="Notifications pages">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => void load(page - 1, unreadOnly)}
+            className="rounded border border-gray-400 px-3 py-2 text-sm font-semibold text-gray-800 disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => void load(page + 1, unreadOnly)}
+            className="rounded border border-gray-400 px-3 py-2 text-sm font-semibold text-gray-800 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </nav>
+      )}
+
+      <p className="mt-8 text-sm text-gray-600">
+        Looking for a conversation? <Link className="font-semibold text-green-800 underline" to="/messages">Open your messages</Link>.
+      </p>
+    </section>
+  );
+};
+
+export default NotificationsPage;

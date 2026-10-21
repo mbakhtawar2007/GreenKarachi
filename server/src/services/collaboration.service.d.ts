@@ -19,8 +19,8 @@ export declare const supplyGapRequestInputSchema: z.ZodObject<{
     stockAvailable: number;
     neededBy: string;
     area: string;
-    species?: string | undefined;
     notes?: string | undefined;
+    species?: string | undefined;
     requirements?: string | undefined;
 }, {
     plantName: string;
@@ -28,8 +28,8 @@ export declare const supplyGapRequestInputSchema: z.ZodObject<{
     stockAvailable: number;
     neededBy: string;
     area: string;
-    species?: string | undefined;
     notes?: string | undefined;
+    species?: string | undefined;
     requirements?: string | undefined;
 }>;
 export declare const supplyOfferInputSchema: z.ZodObject<{

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.declinePledge = exports.confirmPledge = exports.withdrawPledge = exports.getMyPledges = exports.submitPledge = exports.addProgressUpdate = exports.getProjectForViewer = exports.discoverProjects = exports.getMyProjects = exports.changeProjectStatus = exports.updateProject = exports.createProject = exports.sanitizeProjectForViewer = exports.latestTreesPlanted = exports.progressPercent = exports.canViewProject = exports.canPledgeToProject = exports.isPledgeSupporter = exports.isOrganizer = exports.findLivePledge = exports.isLivePledge = exports.summarizePledges = exports.canOrganizerTransitionPledge = exports.canSupporterTransitionPledge = exports.pledgeTransitionsForOrganizer = exports.pledgeTransitionsForSupporter = exports.canTransitionProject = exports.projectTransitions = exports.requirementsFitTarget = exports.requirementsTotal = exports.projectFilterSchema = exports.pledgeInputSchema = exports.progressUpdateInputSchema = exports.projectStatusInputSchema = exports.projectInputSchema = exports.projectRequirementInputSchema = exports.pledgeEligibleRoles = exports.contactPreferences = exports.pledgeStatuses = exports.pledgeTypes = exports.projectStatuses = void 0;
 const zod_1 = require("zod");
 const auth_1 = require("../lib/auth");
+const notifications_service_1 = require("./notifications.service");
 // Phase 6 domain rules.
 // Plantation organizers publish projects with plant requirements, a
 // timeline, an optional funding target, photos, and progress updates.
@@ -558,6 +559,15 @@ const submitPledge = async (supporterUserId, supporterRoles, projectId, input, s
         throw new Error(error.message);
     }
     await recordPledgeEvent(supabase, data, supporterUserId, null, 'PLEDGED');
+    // Phase 8: tell the organizer a pledge arrived. The notification names
+    // the pledge type only — never the pledged amount (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.pledgeReceivedNotification)({
+        recipientUserId: project.organizer_user_id,
+        actorUserId: supporterUserId,
+        projectId,
+        projectTitle: project.title,
+        pledgeType: input.pledgeType
+    }));
     return data;
 };
 exports.submitPledge = submitPledge;
@@ -609,6 +619,14 @@ const withdrawPledge = async (supporterUserId, pledgeId, supabase = (0, auth_1.g
     }
     const updated = await setPledgeStatus(supabase, pledge, supporterUserId, 'WITHDRAWN', exports.canSupporterTransitionPledge);
     const project = await getProject(supabase, pledge.project_id);
+    // Phase 8: tell the organizer the pledge was withdrawn (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.pledgeStatusNotification)({
+        recipientUserId: project.organizer_user_id,
+        actorUserId: supporterUserId,
+        projectId: project.id,
+        projectTitle: project.title,
+        status: 'WITHDRAWN'
+    }));
     return { pledge: updated, project: await enrichProject(supabase, project, supporterUserId) };
 };
 exports.withdrawPledge = withdrawPledge;
@@ -621,6 +639,15 @@ const confirmPledge = async (organizerUserId, pledgeId, supabase = (0, auth_1.ge
     // Confirming acknowledges the intended support for coordination. It
     // does NOT record any money as received, because no receipt exists.
     const updated = await setPledgeStatus(supabase, pledge, organizerUserId, 'CONFIRMED', exports.canOrganizerTransitionPledge);
+    // Phase 8: tell the supporter their pledge was confirmed, without
+    // implying any funds were received (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.pledgeStatusNotification)({
+        recipientUserId: pledge.supporter_user_id,
+        actorUserId: organizerUserId,
+        projectId: project.id,
+        projectTitle: project.title,
+        status: 'CONFIRMED'
+    }));
     return { pledge: updated, project: await enrichProject(supabase, project, organizerUserId) };
 };
 exports.confirmPledge = confirmPledge;
@@ -631,6 +658,14 @@ const declinePledge = async (organizerUserId, pledgeId, supabase = (0, auth_1.ge
         throw new Error('You do not have permission to decline this pledge.');
     }
     const updated = await setPledgeStatus(supabase, pledge, organizerUserId, 'DECLINED', exports.canOrganizerTransitionPledge);
+    // Phase 8: tell the supporter their pledge was declined (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.pledgeStatusNotification)({
+        recipientUserId: pledge.supporter_user_id,
+        actorUserId: organizerUserId,
+        projectId: project.id,
+        projectTitle: project.title,
+        status: 'DECLINED'
+    }));
     return { pledge: updated, project: await enrichProject(supabase, project, organizerUserId) };
 };
 exports.declinePledge = declinePledge;
