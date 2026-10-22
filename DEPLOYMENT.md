@@ -110,6 +110,40 @@ Verify: `GET /api/health` returns `{"status":"ok", ...}`.
 > complete. The pre-built compiled companions committed in `server/src/` let
 > `npm start` run without a local build.
 
+## Deploy the server on Vercel (serverless)
+
+The server also ships a Vercel adapter, so it can run as a serverless
+function instead of a long-lived process:
+
+- `server/api/index.js` re-exports the Express app for `@vercel/node`;
+  importing it never starts a listener (see the direct-run guard in
+  `server/src/index.ts` / `index.js`). `npm start` still starts the
+  normal listener for local or Koyeb-style hosting.
+- `server/vercel.json` rewrites every path to that function and pins
+  `buildCommand` to `npm install`, because the package's `build` script
+  runs `tsc`, which needs a generated Prisma client; the committed
+  compiled companions in `server/src/` are what actually run.
+
+Setup in the Vercel dashboard:
+
+1. Import the repository and set the project's **Root Directory** to
+   `server`.
+2. Set the **production branch** to the deployment branch you are
+   importing (e.g. `phase-9-release-readiness`), not the repo default.
+3. Add these environment variables (names only — values go in Vercel's
+   env settings, never in the repo): `NODE_ENV`, `SUPABASE_URL`,
+   `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`,
+   `CORS_ORIGIN`. Set `CORS_ORIGIN` to the real frontend origin, as
+   elsewhere in this guide.
+4. Deploy, then verify `GET <deployment-url>/api/health` returns
+   `{"status":"ok", ...}`.
+
+> Preview/branch deployments may sit behind **Vercel Deployment
+> Protection** (an SSO wall), so API calls from the frontend can be
+> blocked there even when the function is healthy. Treat the
+> **production-branch deployment** as the API endpoint and point the
+> client's `VITE_API_URL` at it.
+
 ## Deploy the client
 
 ```bash
