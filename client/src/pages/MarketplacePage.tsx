@@ -1,5 +1,8 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { apiFetch, type PlantListing } from '../api/catalog';
+import { reportReasons, submitReport, type ReportReason } from '../api/reports';
+import type { AuthSession } from '../App';
 
 type ListingResponse = {
   listings: PlantListing[];
@@ -19,13 +22,42 @@ const filterFields = [
 
 const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
 
-const MarketplacePage: React.FC = () => {
+const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session }) => {
   const [draft, setDraft] = React.useState<Record<string, string>>({ verified: '' });
   const [filters, setFilters] = React.useState<Record<string, string>>({});
   const [page, setPage] = React.useState(1);
   const [result, setResult] = React.useState<ListingResponse | null>(null);
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(true);
+  // Phase 7: reporting a listing sends it to the admin queue. The form is
+  // inline on the card so the reported listing is unambiguous.
+  const [reportingId, setReportingId] = React.useState<string | null>(null);
+  const [reportReason, setReportReason] = React.useState<ReportReason>('SPAM');
+  const [reportDetails, setReportDetails] = React.useState('');
+  const [reportNotice, setReportNotice] = React.useState('');
+  const [reportError, setReportError] = React.useState('');
+  const [reportBusy, setReportBusy] = React.useState(false);
+
+  const sendReport = async (listing: PlantListing) => {
+    if (!session) return;
+    setReportBusy(true);
+    setReportError('');
+    try {
+      await submitReport(session.token, {
+        targetType: 'LISTING',
+        targetId: listing.id,
+        reason: reportReason,
+        details: reportDetails.trim() || undefined
+      });
+      setReportingId(null);
+      setReportDetails('');
+      setReportNotice(`Thank you — your report about "${listing.name}" was sent to the admin team.`);
+    } catch (requestError: unknown) {
+      setReportError(requestError instanceof Error ? requestError.message : 'The report could not be sent.');
+    } finally {
+      setReportBusy(false);
+    }
+  };
 
   React.useEffect(() => {
     let active = true;
@@ -107,6 +139,7 @@ const MarketplacePage: React.FC = () => {
         </div>
       </form>
 
+      {reportNotice && <div className="mb-6 border-l-4 border-green-700 bg-green-50 p-4 text-green-900" role="status">{reportNotice}</div>}
       {loading && <p className="py-12 text-center text-gray-600" role="status">Loading plant listings...</p>}
       {!loading && error && <div className="border-l-4 border-red-700 bg-red-50 p-4 text-red-900" role="alert">{error}</div>}
       {!loading && !error && result?.listings.length === 0 && (
@@ -142,6 +175,36 @@ const MarketplacePage: React.FC = () => {
                   <div className="col-span-2"><dt className="text-gray-500">Nursery</dt><dd>{listing.nursery?.name || 'Nursery'}</dd></div>
                   <div className="col-span-2"><dt className="text-gray-500">Location / service area</dt><dd>{[listing.nursery?.city, listing.service_area].filter(Boolean).join(' · ') || 'Not specified'}</dd></div>
                 </dl>
+                <div className="mt-4">
+                  {reportingId === listing.id ? (
+                    <form
+                      onSubmit={(event) => { event.preventDefault(); void sendReport(listing); }}
+                      className="border border-green-200 bg-white p-3"
+                    >
+                      <label className="block text-sm font-medium text-gray-700">
+                        Reason
+                        <select value={reportReason} onChange={(event) => setReportReason(event.target.value as ReportReason)} className="mt-1 w-full rounded border border-green-300 px-2 py-1.5">
+                          {reportReasons.map((reason) => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
+                        </select>
+                      </label>
+                      <label className="mt-2 block text-sm font-medium text-gray-700">
+                        Details (optional)
+                        <textarea value={reportDetails} onChange={(event) => setReportDetails(event.target.value)} rows={2} className="mt-1 w-full rounded border border-green-300 px-2 py-1.5" />
+                      </label>
+                      {reportError && <p className="mt-2 text-sm text-red-800" role="alert">{reportError}</p>}
+                      <div className="mt-3 flex gap-2">
+                        <button type="submit" disabled={reportBusy} className="rounded bg-green-800 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40">{reportBusy ? 'Sending...' : 'Send report'}</button>
+                        <button type="button" onClick={() => setReportingId(null)} className="rounded border border-green-800 px-3 py-1.5 text-sm font-semibold text-green-900">Cancel</button>
+                      </div>
+                    </form>
+                  ) : session ? (
+                    <button type="button" onClick={() => { setReportingId(listing.id); setReportNotice(''); setReportError(''); }} className="text-sm font-medium text-green-800 underline underline-offset-4">
+                      Report this listing
+                    </button>
+                  ) : (
+                    <Link to="/login" className="text-sm font-medium text-green-800 underline underline-offset-4">Sign in to report this listing</Link>
+                  )}
+                </div>
               </article>
             ))}
           </div>

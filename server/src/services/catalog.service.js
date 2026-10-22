@@ -95,6 +95,8 @@ const getPublicListings = async (filters) => {
         .from('plant_listings')
         .select('*, nursery:nurseries!inner(name, city, address, verification_status, is_verified)', { count: 'exact' })
         .eq('status', 'ACTIVE')
+        // Phase 7 moderation: admin-hidden listings are never public.
+        .eq('moderation_status', 'VISIBLE')
         .order('created_at', { ascending: false })
         .range(from, from + filters.pageSize - 1);
     if (filters.query) {

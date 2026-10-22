@@ -270,6 +270,7 @@ export declare const canPledgeToProject: (project: {
 export declare const canViewProject: (project: {
     organizer_user_id: string;
     status: ProjectStatus | string;
+    moderation_status?: string | null;
 }, viewerUserId: string | null, viewerHasPledge?: boolean) => boolean;
 export declare const progressPercent: (treesPlanted: number, treeTarget: number) => number;
 export declare const latestTreesPlanted: (updates: Array<{

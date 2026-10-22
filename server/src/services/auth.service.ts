@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getSupabaseClient, normalizeRoles, sanitizeUser } from '../lib/auth';
+import { isLoginBlocked } from './admin.service';
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters long.'),
@@ -67,6 +68,24 @@ export const loginUser = async (input: z.infer<typeof loginSchema>) => {
   }
 
   const user = data.user;
+
+  // Phase 7: suspended accounts (see admin.service) cannot sign in. The
+  // admin action also bans the account at the Supabase Auth layer; this
+  // account-state check is the app-level enforcement for sessions Supabase
+  // still returns, and it produces a clear message instead of an auth
+  // error.
+  if (user) {
+    const { data: accountState } = await supabase
+      .from('user_account_states')
+      .select('is_suspended')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (isLoginBlocked(accountState)) {
+      await supabase.auth.signOut();
+      throw new Error('This account has been suspended. Contact the GreenKarachi team if you believe this is a mistake.');
+    }
+  }
+
   const roles = Array.isArray(user?.user_metadata?.roles)
     ? user.user_metadata.roles
     : ['BUYER'];

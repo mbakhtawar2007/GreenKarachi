@@ -11,6 +11,8 @@ import catalogRoutes from './routes/catalog';
 import quoteRoutes from './routes/quotes';
 import collaborationRoutes from './routes/collaboration';
 import projectRoutes from './routes/projects';
+import adminRoutes from './routes/admin';
+import reportRoutes from './routes/reports';
 
 const app: Express = express();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? config.PORT);
@@ -62,6 +64,8 @@ app.use('/api/catalog/listings', catalogRoutes);
 app.use('/api/quotes', quoteRoutes);
 app.use('/api/collaboration', collaborationRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/reports', reportRoutes);
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({
