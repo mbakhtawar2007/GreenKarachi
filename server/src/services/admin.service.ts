@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../lib/auth';
+import {
+  accountSuspensionNotification,
+  contentModerationNotification,
+  createNotification,
+  reportUpdatedNotification,
+  verificationDecisionNotification
+} from './notifications.service';
 
 // Phase 7 domain rules.
 // Admins provide the platform's minimum trust and governance controls:
@@ -440,6 +447,15 @@ export const decideUserVerification = async (
     newState: { verification_status: next.verification_status },
     reason: input.notes
   }));
+  // Phase 8: tell the user their verification status changed. Only the
+  // status is shared — the admin's notes never leave the audit record
+  // (failure-safe follow-up).
+  await createNotification(supabase, verificationDecisionNotification({
+    recipientUserId: targetUserId,
+    actorUserId: actor.id,
+    subject: 'USER',
+    status: next.verification_status
+  }));
   return data;
 };
 
@@ -486,6 +502,13 @@ export const suspendUser = async (
     newState: { is_suspended: true },
     reason: input.reason
   }));
+  // Phase 8: tell the user they were suspended, without the admin's
+  // reason (failure-safe follow-up).
+  await createNotification(supabase, accountSuspensionNotification({
+    recipientUserId: targetUserId,
+    actorUserId: actor.id,
+    suspended: true
+  }));
   return data;
 };
 
@@ -524,6 +547,12 @@ export const reactivateUser = async (
     previousState: { is_suspended: true },
     newState: { is_suspended: false },
     reason: notes
+  }));
+  // Phase 8: tell the user they can sign in again (failure-safe).
+  await createNotification(supabase, accountSuspensionNotification({
+    recipientUserId: targetUserId,
+    actorUserId: actor.id,
+    suspended: false
   }));
   return data;
 };
@@ -588,6 +617,14 @@ export const decideNurseryVerification = async (
     previousState: { verification_status: currentStatus, is_verified: nursery.is_verified },
     newState: { verification_status: next.verification_status, is_verified: next.is_verified },
     reason: input.notes
+  }));
+  // Phase 8: tell the nursery owner the decision, status only — the
+  // admin's notes stay in the audit record (failure-safe follow-up).
+  await createNotification(supabase, verificationDecisionNotification({
+    recipientUserId: nurseryUserId,
+    actorUserId: actor.id,
+    subject: 'NURSERY',
+    status: next.verification_status
   }));
   return data;
 };
@@ -658,6 +695,21 @@ const setContentModeration = async (
     newState: { moderation_status: toStatus },
     reason
   }));
+  // Phase 8: tell the owner their content was hidden or restored. The
+  // notification names their own content and never carries the
+  // moderator's reason (failure-safe follow-up).
+  const ownerUserId = ((row as unknown as Record<string, unknown>)[audit.ownerColumn] as string | undefined) ?? null;
+  if (ownerUserId) {
+    const updated = data as unknown as Record<string, unknown>;
+    await createNotification(supabase, contentModerationNotification({
+      recipientUserId: ownerUserId,
+      actorUserId: actor.id,
+      kind: audit.targetType,
+      targetId: id,
+      name: String(updated.name ?? updated.title ?? 'your content'),
+      hidden: toStatus === 'HIDDEN'
+    }));
+  }
   return data;
 };
 
@@ -850,6 +902,14 @@ export const updateReportStatus = async (
     previousState: { status: currentStatus },
     newState: { status: input.status, target_type: report.target_type, target_id: report.target_id },
     reason: input.resolutionNotes
+  }));
+  // Phase 8: tell the reporter the outcome, status only — resolution
+  // notes stay in the admin record (failure-safe follow-up).
+  await createNotification(supabase, reportUpdatedNotification({
+    recipientUserId: report.reporter_user_id,
+    actorUserId: actor.id,
+    reportId,
+    status: input.status
   }));
   return data;
 };

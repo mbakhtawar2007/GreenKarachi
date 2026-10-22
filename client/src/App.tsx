@@ -14,6 +14,8 @@ import RegisterPage from './pages/RegisterPage';
 import InventoryPage from './pages/InventoryPage';
 import QuotesOrdersPage from './pages/QuotesOrdersPage';
 import AdminPage from './pages/AdminPage';
+import NotificationsPage from './pages/NotificationsPage';
+import MessagesPage from './pages/MessagesPage';
 
 export type AuthUser = {
   id: string;
@@ -70,6 +72,15 @@ const App: React.FC = () => {
             : <Navigate to="/login" replace />} />
           <Route path="admin" element={session?.user.roles.includes('ADMIN')
             ? <AdminPage session={session} />
+            : <Navigate to="/login" replace />} />
+          <Route path="notifications" element={session
+            ? <NotificationsPage session={session} />
+            : <Navigate to="/login" replace />} />
+          <Route path="messages" element={session
+            ? <MessagesPage session={session} />
+            : <Navigate to="/login" replace />} />
+          <Route path="messages/:id" element={session
+            ? <MessagesPage session={session} />
             : <Navigate to="/login" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

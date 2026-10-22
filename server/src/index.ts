@@ -13,6 +13,8 @@ import collaborationRoutes from './routes/collaboration';
 import projectRoutes from './routes/projects';
 import adminRoutes from './routes/admin';
 import reportRoutes from './routes/reports';
+import conversationRoutes from './routes/conversations';
+import notificationRoutes from './routes/notifications';
 
 const app: Express = express();
 const preferredPort = Number(process.env.PORT ?? process.env.SERVER_PORT ?? config.PORT);
@@ -66,6 +68,8 @@ app.use('/api/collaboration', collaborationRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/conversations', conversationRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (req: Request, res: Response) => {
   res.status(200).json({

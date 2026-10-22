@@ -19,6 +19,7 @@ import {
   type ProjectFilters
 } from '../api/projects';
 import type { AuthSession } from '../App';
+import MessageButton from '../components/MessageButton';
 
 const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
 const formatMoney = (value: string | number | null | undefined) =>
@@ -380,6 +381,13 @@ const ProjectsPage: React.FC<{ session: AuthSession | null }> = ({ session }) =>
             )}
 
             <div className="mt-4"><PledgeSummaryBox project={selected} /></div>
+
+            {session && (
+              <div className="mt-4">
+                <MessageButton token={session.token} refType="PROJECT" refId={selected.id} label="Message project participants" />
+                <p className="mt-1 text-xs text-gray-500">Only the organizer and people who have pledged can open this conversation.</p>
+              </div>
+            )}
 
             <h3 className="mt-6 font-semibold text-green-900">Progress updates</h3>
             {(selected.progress_updates ?? []).length === 0 ? (

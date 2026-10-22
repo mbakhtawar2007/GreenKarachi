@@ -1,5 +1,15 @@
 import { z } from 'zod';
 import { getSupabaseClient } from '../lib/auth';
+import {
+  createNotification,
+  orderConfirmedNotification,
+  orderStatusNotification,
+  quotationDeclinedNotification,
+  quotationReceivedNotification,
+  quoteRequestCancelledNotification,
+  quoteRequestDeclinedNotification,
+  quoteRequestReceivedNotification
+} from './notifications.service';
 
 // Phase 4 domain rules.
 // A quote request is NOT an accepted order. An order exists only after a buyer
@@ -222,6 +232,15 @@ export const createQuoteRequest = async (
     }
     throw new Error(error.message);
   }
+  // Phase 8: tell the nursery a request arrived (failure-safe follow-up).
+  await createNotification(supabase, quoteRequestReceivedNotification({
+    recipientUserId: listing.nursery_user_id,
+    actorUserId: buyerUserId,
+    requestId: data.id as string,
+    plantName: listing.name,
+    quantity: input.quantity,
+    deliveryArea: input.deliveryArea
+  }));
   return data;
 };
 
@@ -307,6 +326,14 @@ export const respondWithQuotation = async (
     .update({ status: 'QUOTED', updated_at: new Date().toISOString() })
     .eq('id', requestId);
   if (updateError) throw new Error(updateError.message);
+  // Phase 8: tell the buyer their quotation arrived (failure-safe).
+  await createNotification(supabase, quotationReceivedNotification({
+    recipientUserId: request.buyer_user_id,
+    actorUserId: nurseryUserId,
+    requestId,
+    plantName: listing.name,
+    quantity: input.quantity
+  }));
   return data;
 };
 
@@ -331,6 +358,12 @@ export const declineQuotation = async (buyerUserId: string, requestId: string, s
   if (request.buyer_user_id !== buyerUserId) throw new Error('You do not have permission to decline this quotation.');
   await setQuoteRequestStatus(supabase, requestId, request.status as QuoteRequestStatus, 'DECLINED');
   await supabase.from('quotations').update({ status: 'DECLINED', updated_at: new Date().toISOString() }).eq('quote_request_id', requestId);
+  // Phase 8: tell the nursery the buyer declined (failure-safe).
+  await createNotification(supabase, quotationDeclinedNotification({
+    recipientUserId: request.nursery_user_id,
+    actorUserId: buyerUserId,
+    requestId
+  }));
   return getQuoteRequest(supabase, requestId);
 };
 
@@ -338,6 +371,12 @@ export const cancelQuoteRequest = async (buyerUserId: string, requestId: string,
   const request = await getQuoteRequest(supabase, requestId);
   if (request.buyer_user_id !== buyerUserId) throw new Error('You do not have permission to cancel this quote request.');
   await setQuoteRequestStatus(supabase, requestId, request.status as QuoteRequestStatus, 'CANCELLED');
+  // Phase 8: tell the nursery the request was cancelled (failure-safe).
+  await createNotification(supabase, quoteRequestCancelledNotification({
+    recipientUserId: request.nursery_user_id,
+    actorUserId: buyerUserId,
+    requestId
+  }));
   return getQuoteRequest(supabase, requestId);
 };
 
@@ -346,6 +385,12 @@ export const declineQuoteRequest = async (nurseryUserId: string, requestId: stri
   if (request.nursery_user_id !== nurseryUserId) throw new Error('You do not have permission to decline this quote request.');
   await setQuoteRequestStatus(supabase, requestId, request.status as QuoteRequestStatus, 'DECLINED');
   await supabase.from('quotations').update({ status: 'WITHDRAWN', updated_at: new Date().toISOString() }).eq('quote_request_id', requestId);
+  // Phase 8: tell the buyer the nursery declined (failure-safe).
+  await createNotification(supabase, quoteRequestDeclinedNotification({
+    recipientUserId: request.buyer_user_id,
+    actorUserId: nurseryUserId,
+    requestId
+  }));
   return getQuoteRequest(supabase, requestId);
 };
 
@@ -471,6 +516,15 @@ export const acceptQuotation = async (buyerUserId: string, requestId: string, su
   await supabase.from('quotations').update({ status: 'ACCEPTED', updated_at: new Date().toISOString() }).eq('id', quotation.id);
   await supabase.from('quote_requests').update({ status: 'ACCEPTED', updated_at: new Date().toISOString() }).eq('id', requestId);
 
+  // Phase 8: tell the nursery the order was confirmed (failure-safe).
+  await createNotification(supabase, orderConfirmedNotification({
+    recipientUserId: request.nursery_user_id,
+    actorUserId: buyerUserId,
+    orderId: order.id as string,
+    plantName: listing.name,
+    quantity: quotation.quantity
+  }));
+
   return { ...order, items: [{ listing_id: listing.id, plant_name: listing.name, unit_price: quotation.unit_price, quantity: quotation.quantity, line_total: totals.subtotal }] };
 };
 
@@ -544,6 +598,19 @@ export const changeOrderStatus = async (
         })
         .eq('id', listing.id);
     }
+  }
+
+  // Phase 8: tell the other participant about the new order status
+  // (failure-safe follow-up).
+  if (target === 'FULFILLED' || target === 'CANCELLED') {
+    const otherParticipant = order.buyer_user_id === userId ? order.nursery_user_id : order.buyer_user_id;
+    await createNotification(supabase, orderStatusNotification({
+      recipientUserId: otherParticipant,
+      actorUserId: userId,
+      orderId,
+      plantName: order.plant_name,
+      status: target
+    }));
   }
   return data;
 };

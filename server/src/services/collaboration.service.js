@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.acceptSupplyOffer = exports.withdrawSupplyOffer = exports.rejectSupplyOffer = exports.getMySupplyOffers = exports.submitSupplyOffer = exports.getSupplyGapRequestForParticipant = exports.getOpenSupplyGapRequests = exports.getMySupplyGapRequests = exports.changeSupplyGapRequestStatus = exports.updateSupplyGapRequest = exports.createSupplyGapRequest = exports.findPendingOfferFromSupplier = exports.isEligibleSupplier = exports.isOfferSupplier = exports.isRequester = exports.simulateConcurrentAcceptances = exports.canAcceptOffer = exports.canTransitionSupplyOffer = exports.canTransitionSupplyGapRequest = exports.supplyOfferTransitions = exports.supplyGapRequestTransitions = exports.isOpenForOffers = exports.remainingGap = exports.summarizeOffers = exports.computeQuantityNeeded = exports.supplyGapRequestStatusInputSchema = exports.supplyOfferInputSchema = exports.supplyGapRequestInputSchema = exports.supplyOfferStatuses = exports.supplyGapRequestStatuses = void 0;
 const zod_1 = require("zod");
 const auth_1 = require("../lib/auth");
+const notifications_service_1 = require("./notifications.service");
 // Phase 5 domain rules.
 // Nursery-to-nursery supply-gap collaboration is GreenKarachi's core
 // differentiator. A nursery that needs more plants than it has publishes a
@@ -369,6 +370,14 @@ const submitSupplyOffer = async (supplierUserId, requestId, input, supabase = (0
         throw new Error(error.message);
     }
     await recordOfferEvent(supabase, data, supplierUserId, null, 'PENDING');
+    // Phase 8: tell the requesting nursery an offer arrived (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.supplyOfferReceivedNotification)({
+        recipientUserId: request.requester_user_id,
+        actorUserId: supplierUserId,
+        requestId,
+        plantName: request.plant_name,
+        quantity: input.quantity
+    }));
     return data;
 };
 exports.submitSupplyOffer = submitSupplyOffer;
@@ -420,6 +429,15 @@ const rejectSupplyOffer = async (requesterUserId, offerId, supabase = (0, auth_1
         throw new Error('You do not have permission to reject this offer.');
     }
     const updated = await setOfferStatus(supabase, offer, requesterUserId, 'REJECTED');
+    // Phase 8: tell the supplier their offer was rejected (failure-safe).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.supplyOfferStatusNotification)({
+        recipientUserId: offer.supplier_user_id,
+        actorUserId: requesterUserId,
+        requestId: request.id,
+        plantName: request.plant_name,
+        quantity: offer.quantity,
+        status: 'REJECTED'
+    }));
     return { offer: updated, request: await enrichRequest(supabase, request, requesterUserId) };
 };
 exports.rejectSupplyOffer = rejectSupplyOffer;
@@ -432,6 +450,16 @@ const withdrawSupplyOffer = async (supplierUserId, offerId, supabase = (0, auth_
     // other nurseries are relying on, so it cannot be pulled back here.
     const updated = await setOfferStatus(supabase, offer, supplierUserId, 'WITHDRAWN');
     const request = await getSupplyGapRequest(supabase, offer.request_id);
+    // Phase 8: tell the requesting nursery the offer was withdrawn
+    // (failure-safe follow-up).
+    await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.supplyOfferStatusNotification)({
+        recipientUserId: request.requester_user_id,
+        actorUserId: supplierUserId,
+        requestId: request.id,
+        plantName: request.plant_name,
+        quantity: offer.quantity,
+        status: 'WITHDRAWN'
+    }));
     return { offer: updated, request: await enrichRequest(supabase, request, supplierUserId) };
 };
 exports.withdrawSupplyOffer = withdrawSupplyOffer;
@@ -493,6 +521,16 @@ const acceptSupplyOffer = async (requesterUserId, offerId, supabase = (0, auth_1
             continue; // Lost the race: re-read and re-validate.
         try {
             const updated = await setOfferStatus(supabase, offer, requesterUserId, 'ACCEPTED');
+            // Phase 8: tell the supplier their offer was accepted. Delivery is
+            // failure-safe, so it cannot trigger the compensating rollback.
+            await (0, notifications_service_1.createNotification)(supabase, (0, notifications_service_1.supplyOfferStatusNotification)({
+                recipientUserId: offer.supplier_user_id,
+                actorUserId: requesterUserId,
+                requestId: request.id,
+                plantName: request.plant_name,
+                quantity: offer.quantity,
+                status: 'ACCEPTED'
+            }));
             const fresh = await getSupplyGapRequest(supabase, request.id);
             return { offer: updated, request: await enrichRequest(supabase, fresh, requesterUserId) };
         }
