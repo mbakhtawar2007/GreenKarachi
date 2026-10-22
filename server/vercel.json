@@ -1,1 +1,1 @@
-{"buildCommand":"npm install","rewrites":[{"destination":"/api/index.js","source":"/(.*)"}]}
+{"buildCommand":"npm install","outputDirectory":"public","rewrites":[{"source":"/(.*)","destination":"/api/index.js"}]}
