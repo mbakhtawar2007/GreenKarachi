@@ -46,7 +46,10 @@ const registerUser = async (input) => {
             roles,
             passwordHash: undefined
         }),
-        token: data.session?.access_token ?? null
+        token: data.session?.access_token ?? null,
+        // True when email confirmation is enabled: the account was created but
+        // Supabase issues no session until the confirmation link is clicked.
+        requiresEmailConfirmation: !data.session
     };
 };
 exports.registerUser = registerUser;

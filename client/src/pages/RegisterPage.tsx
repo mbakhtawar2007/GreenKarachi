@@ -21,11 +21,13 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
   const [password, setPassword] = React.useState('');
   const [role, setRole] = React.useState<(typeof roleOptions)[number]['value']>('BUYER');
   const [error, setError] = React.useState('');
+  const [success, setSuccess] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
+    setSuccess('');
     setIsSubmitting(true);
 
     try {
@@ -44,7 +46,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
         throw new Error(data.message || 'Unable to create account.');
       }
 
-      if (!data.token || !data.user) {
+      if (!data.token) {
+        // Email confirmation is enabled: the account was created, but no
+        // session is issued until the confirmation link is clicked.
+        setSuccess(
+          `Account created! We've sent a confirmation link to ${email}. Click it, then sign in.`
+        );
+        return;
+      }
+
+      if (!data.user) {
         throw new Error('Account created but authentication response was incomplete.');
       }
 
@@ -131,6 +142,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {
           {error ? (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
               {error}
+            </p>
+          ) : null}
+
+          {success ? (
+            <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+              {success}
             </p>
           ) : null}
 
