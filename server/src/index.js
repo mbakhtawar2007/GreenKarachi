@@ -92,8 +92,15 @@ const startServer = async () => {
         console.log(`Health check: http://localhost:${PORT}/api/health`);
     });
 };
-startServer().catch((error) => {
-    console.error('Failed to start GreenKarachi server:', error);
-    process.exit(1);
-});
+// Only listen when this file is the process entry point (`npm start`)
+// and we are not running on Vercel. When the app is imported instead —
+// by the Vercel serverless entry in `api/index.js` — the exported app
+// handles requests without ever binding a port.
+const isDirectRun = require.main === module;
+if (isDirectRun && !process.env.VERCEL) {
+    startServer().catch((error) => {
+        console.error('Failed to start GreenKarachi server:', error);
+        process.exit(1);
+    });
+}
 exports.default = app;
