@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -29,6 +29,14 @@ export type AuthSession = {
   user: AuthUser;
 };
 
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  React.useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [pathname]);
+  return null;
+};
+
 const App: React.FC = () => {
   const [session, setSession] = React.useState<AuthSession | null>(() => {
     try {
@@ -50,10 +58,11 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-green-50">
+    <div className="flex min-h-screen flex-col bg-[#f6f8f6] font-sans text-gray-800">
+      <ScrollToTop />
       <Navbar session={session} onLogout={handleLogout} />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="marketplace" element={<MarketplacePage session={session} />} />

@@ -1,12 +1,13 @@
-const LoadingState: React.FC<{message?: string}> = ({message = 'Loading...'}) => {
+const LoadingState: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => {
   return (
-    <div className="min-h-screen flex items-center justify-center" role="status" aria-label={message}>
-      <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-        <div className="animate-spin w-16 h-16 border-4 border-green-200 border-t-transparent mx-auto mb-4" aria-hidden="true"></div>
-        <h3 className="text-xl font-medium text-green-800">{message}</h3>
-        <p className="text-gray-500 text-sm mt-2">
-          Please wait while we load the data.
-        </p>
+    <div className="flex items-center justify-center py-24" role="status" aria-label={message}>
+      <div className="text-center">
+        <div
+          className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-green-200 border-t-green-700"
+          aria-hidden="true"
+        />
+        <h3 className="text-lg font-semibold text-green-950">{message}</h3>
+        <p className="mt-1 text-sm text-gray-500">Please wait while we load the data.</p>
       </div>
     </div>
   );

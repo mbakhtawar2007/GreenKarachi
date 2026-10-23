@@ -18,8 +18,15 @@ module.exports = {
           light: '#E0E0E0',
         },
       },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        display: ['Fraunces', 'Georgia', 'serif'],
+      },
+      boxShadow: {
+        soft: '0 8px 30px rgba(20, 83, 45, 0.08)',
+        lift: '0 16px 40px rgba(20, 83, 45, 0.14)',
+      },
     },
   },
   plugins: [],
 }
-

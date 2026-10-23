@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import type { AuthSession } from '../App';
 import { getUnreadNotificationCount } from '../api/notifications';
 
@@ -7,6 +7,14 @@ type NavbarProps = {
   session: AuthSession | null;
   onLogout: () => void;
 };
+
+export const LogoMark: React.FC<{ className?: string }> = ({ className = 'h-10 w-10 bg-green-800' }) => (
+  <span className={`grid shrink-0 place-items-center rounded-xl text-white ${className}`} aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <path d="M5 19C5 9.5 12.5 4.5 20 4c.5 7.5-5 15-15 15Zm0 0c2.5-5 6.5-8.5 11-10.5" />
+    </svg>
+  </span>
+);
 
 const Navbar: React.FC<NavbarProps> = ({ session, onLogout }) => {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -31,87 +39,100 @@ const Navbar: React.FC<NavbarProps> = ({ session, onLogout }) => {
 
   const unreadBadge = unreadCount > 0 && (
     <span
-      className="ml-1 inline-block rounded-full bg-red-700 px-1.5 py-0.5 align-middle text-xs font-bold text-white"
+      className="ml-1.5 inline-block rounded-full bg-red-600 px-1.5 py-0.5 align-middle text-[11px] font-bold leading-none text-white"
       aria-label={`${unreadCount} unread notifications`}
     >
       {unreadCount}
     </span>
   );
+
+  const links: { to: string; label: string; badge?: boolean }[] = [
+    { to: '/marketplace', label: 'Marketplace' },
+    { to: '/nursery-directory', label: 'Nursery Directory' },
+    { to: '/collaboration', label: 'Collaboration' },
+    { to: '/projects', label: 'Projects' },
+    ...(session?.user.roles.includes('NURSERY_OWNER') ? [{ to: '/inventory', label: 'Inventory' }] : []),
+    ...(session && (session.user.roles.includes('BUYER') || session.user.roles.includes('NURSERY_OWNER'))
+      ? [{ to: '/quotes', label: 'Quotes & Orders' }]
+      : []),
+    ...(session?.user.roles.includes('ADMIN') ? [{ to: '/admin', label: 'Admin' }] : []),
+    ...(session ? [{ to: '/messages', label: 'Messages' }] : []),
+    ...(session ? [{ to: '/notifications', label: 'Notifications', badge: true }] : []),
+  ];
+
+  const desktopLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `rounded-full px-3.5 py-2 text-sm font-medium transition ${
+      isActive ? 'bg-green-100 text-green-950' : 'text-green-900/70 hover:bg-green-50 hover:text-green-950'
+    }`;
+
+  const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition ${
+      isActive ? 'bg-green-800 text-white' : 'bg-green-50 text-green-900'
+    }`;
+
   return (
-    <nav className="bg-white shadow-sm border-b border-green-200">
-      <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="font-bold text-2xl text-green-800">
-            GreenKarachi
+    <header className="sticky top-0 z-40 border-b border-green-900/10 bg-white/90 shadow-[0_1px_0_rgba(20,83,45,0.04)] backdrop-blur">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="flex h-16 items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-2.5" aria-label="GreenKarachi home">
+            <LogoMark />
+            <span className="leading-tight">
+              <span className="block font-display text-xl font-bold text-green-950">GreenKarachi</span>
+              <span className="hidden text-[11px] font-semibold uppercase tracking-wider text-green-700 sm:block">
+                Plant Marketplace
+              </span>
+            </span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/marketplace" className="text-green-700 hover:text-green-900 transition-colors">
-              Marketplace
-            </Link>
-            <Link to="/nursery-directory" className="text-green-700 hover:text-green-900 transition-colors">
-              Nursery Directory
-            </Link>
-            <Link to="/collaboration" className="text-green-700 hover:text-green-900 transition-colors">
-              Collaboration
-            </Link>
-            <Link to="/projects" className="text-green-700 hover:text-green-900 transition-colors">
-              Projects
-            </Link>
-            {session?.user.roles.includes('NURSERY_OWNER') && (
-              <Link to="/inventory" className="text-green-700 hover:text-green-900 transition-colors">
-                Inventory
-              </Link>
-            )}
-            {session && (session.user.roles.includes('BUYER') || session.user.roles.includes('NURSERY_OWNER')) && (
-              <Link to="/quotes" className="text-green-700 hover:text-green-900 transition-colors">
-                Quotes &amp; Orders
-              </Link>
-            )}
-            {session?.user.roles.includes('ADMIN') && (
-              <Link to="/admin" className="text-green-700 hover:text-green-900 transition-colors">
-                Admin
-              </Link>
-            )}
-            {session && (
-              <Link to="/messages" className="text-green-700 hover:text-green-900 transition-colors">
-                Messages
-              </Link>
-            )}
-            {session && (
-              <Link to="/notifications" className="text-green-700 hover:text-green-900 transition-colors">
-                Notifications{unreadBadge}
-              </Link>
-            )}
-          </div>
+          <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
+            {links.map((link) => (
+              <NavLink key={link.to} to={link.to} className={desktopLinkClass}>
+                {link.label}
+                {link.badge ? unreadBadge : null}
+              </NavLink>
+            ))}
+          </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {session ? (
               <>
-                <span className="hidden sm:inline text-sm font-medium text-green-700">{session.user.name}</span>
-                <button type="button" onClick={onLogout} className="text-sm text-green-800 underline underline-offset-4">Sign out</button>
+                <span className="hidden max-w-[10rem] truncate text-sm font-medium text-green-950 md:inline">
+                  {session.user.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="rounded-full border border-green-900/15 px-3.5 py-2 text-sm font-medium text-green-900 transition hover:bg-green-50"
+                >
+                  Sign out
+                </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="text-sm text-green-800">Sign in</Link>
-                <Link to="/register" className="text-sm font-semibold text-white bg-green-700 px-3 py-2 rounded">Create account</Link>
+                <Link
+                  to="/login"
+                  className="rounded-full px-3.5 py-2 text-sm font-medium text-green-900 transition hover:bg-green-50"
+                >
+                  Sign in
+                </Link>
+                <Link to="/register" className="btn-primary px-4 py-2">
+                  Create account
+                </Link>
               </>
             )}
           </div>
         </div>
-        <div className="mt-3 flex gap-x-5 gap-y-2 overflow-x-auto text-sm md:hidden">
-          <Link to="/marketplace" className="whitespace-nowrap text-green-800">Marketplace</Link>
-          <Link to="/nursery-directory" className="whitespace-nowrap text-green-800">Nurseries</Link>
-          <Link to="/collaboration" className="whitespace-nowrap text-green-800">Collaboration</Link>
-          <Link to="/projects" className="whitespace-nowrap text-green-800">Projects</Link>
-          {session?.user.roles.includes('NURSERY_OWNER') && <Link to="/inventory" className="whitespace-nowrap text-green-800">Inventory</Link>}
-          {session && (session.user.roles.includes('BUYER') || session.user.roles.includes('NURSERY_OWNER')) && <Link to="/quotes" className="whitespace-nowrap text-green-800">Quotes &amp; Orders</Link>}
-          {session?.user.roles.includes('ADMIN') && <Link to="/admin" className="whitespace-nowrap text-green-800">Admin</Link>}
-          {session && <Link to="/messages" className="whitespace-nowrap text-green-800">Messages</Link>}
-          {session && <Link to="/notifications" className="whitespace-nowrap text-green-800">Notifications{unreadBadge}</Link>}
-        </div>
+
+        <nav className="flex gap-2 overflow-x-auto pb-3 lg:hidden" aria-label="Main mobile">
+          {links.map((link) => (
+            <NavLink key={link.to} to={link.to} className={mobileLinkClass}>
+              {link.label}
+              {link.badge ? unreadBadge : null}
+            </NavLink>
+          ))}
+        </nav>
       </div>
-    </nav>
+    </header>
   );
 };
 
