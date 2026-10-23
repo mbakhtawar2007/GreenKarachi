@@ -51,7 +51,10 @@ export const registerUser = async (input: z.infer<typeof registerSchema>) => {
       roles,
       passwordHash: undefined
     }),
-    token: data.session?.access_token ?? null
+    token: data.session?.access_token ?? null,
+    // True when email confirmation is enabled: the account was created but
+    // Supabase issues no session until the confirmation link is clicked.
+    requiresEmailConfirmation: !data.session
   };
 };
 

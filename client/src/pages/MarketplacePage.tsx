@@ -102,7 +102,7 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
         <p className="mt-2 max-w-2xl text-gray-600">Browse currently available plants from nursery owners. Prices are listed per plant in PKR.</p>
       </header>
 
-      <form onSubmit={applyFilters} className="mb-8 border-b border-green-200 pb-6">
+      <form onSubmit={applyFilters} className="card mb-8 p-5 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {filterFields.map((field) => (
             <label key={field.key} className="text-sm font-medium text-gray-700">
@@ -113,7 +113,7 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
                 step={field.key.includes('Price') ? '0.01' : field.type === 'number' ? '1' : undefined}
                 value={draft[field.key] ?? ''}
                 onChange={(event) => handleFilterChange(field.key, event.target.value)}
-                className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200"
+                className="input mt-1"
               />
             </label>
           ))}
@@ -122,7 +122,7 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
             <select
               value={draft.verified ?? ''}
               onChange={(event) => handleFilterChange('verified', event.target.value)}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200"
+              className="input mt-1"
             >
               <option value="">Any status</option>
               <option value="true">Verified</option>
@@ -131,17 +131,17 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
           </label>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
-          <button type="submit" className="rounded bg-green-800 px-4 py-2 font-semibold text-white hover:bg-green-900">Apply filters</button>
-          <button type="button" onClick={clearFilters} className="rounded border border-green-800 px-4 py-2 font-semibold text-green-900 hover:bg-green-50">Clear</button>
+          <button type="submit" className="btn-primary">Apply filters</button>
+          <button type="button" onClick={clearFilters} className="btn-secondary">Clear</button>
           <span className="self-center text-sm text-gray-600" aria-live="polite">
             {result ? `${result.pagination.total} available listing${result.pagination.total === 1 ? '' : 's'}` : ''}
           </span>
         </div>
       </form>
 
-      {reportNotice && <div className="mb-6 border-l-4 border-green-700 bg-green-50 p-4 text-green-900" role="status">{reportNotice}</div>}
+      {reportNotice && <div className="mb-6 rounded-r-xl border-l-4 border-green-700 bg-green-50 p-4 text-green-900" role="status">{reportNotice}</div>}
       {loading && <p className="py-12 text-center text-gray-600" role="status">Loading plant listings...</p>}
-      {!loading && error && <div className="border-l-4 border-red-700 bg-red-50 p-4 text-red-900" role="alert">{error}</div>}
+      {!loading && error && <div className="rounded-r-xl border-l-4 border-red-700 bg-red-50 p-4 text-red-900" role="alert">{error}</div>}
       {!loading && !error && result?.listings.length === 0 && (
         <div className="border-y border-green-200 py-12 text-center">
           <h2 className="text-xl font-semibold text-green-950">No available plants match these filters</h2>
@@ -153,18 +153,19 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
         <>
           <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
             {result.listings.map((listing) => (
-              <article key={listing.id} className="overflow-hidden border-b border-green-200 pb-5">
+              <article key={listing.id} className="flex flex-col overflow-hidden rounded-3xl border border-green-900/10 bg-white shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-lift">
                 {listing.image_urls?.[0] ? (
-                  <img src={listing.image_urls[0]} alt={listing.name} loading="lazy" className="mb-4 aspect-[4/3] w-full bg-green-100 object-cover" />
+                  <img src={listing.image_urls[0]} alt={listing.name} loading="lazy" className="aspect-[4/3] w-full bg-green-100 object-cover" />
                 ) : (
-                  <div className="mb-4 flex aspect-[4/3] items-center justify-center bg-green-100 text-sm text-green-900">Image not provided</div>
+                  <div className="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-green-100 to-green-50 text-4xl">🌿</div>
                 )}
+                <div className="flex flex-1 flex-col p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-semibold text-green-950">{listing.name}</h2>
                     <p className="mt-1 text-sm text-gray-600">{listing.species || listing.category}</p>
                   </div>
-                  {listing.nursery?.is_verified && <span className="shrink-0 text-xs font-semibold text-green-800">Verified nursery</span>}
+                  {listing.nursery?.is_verified && <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-900">✓ Verified nursery</span>}
                 </div>
                 {listing.description && <p className="mt-3 line-clamp-3 text-sm text-gray-700">{listing.description}</p>}
                 <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -179,7 +180,7 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
                   {reportingId === listing.id ? (
                     <form
                       onSubmit={(event) => { event.preventDefault(); void sendReport(listing); }}
-                      className="border border-green-200 bg-white p-3"
+                      className="rounded-2xl border border-green-200 bg-green-50/60 p-3"
                     >
                       <label className="block text-sm font-medium text-gray-700">
                         Reason
@@ -205,13 +206,14 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
                     <Link to="/login" className="text-sm font-medium text-green-800 underline underline-offset-4">Sign in to report this listing</Link>
                   )}
                 </div>
+                </div>
               </article>
             ))}
           </div>
           <nav aria-label="Marketplace pages" className="mt-8 flex items-center justify-between border-t border-green-200 pt-4">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="rounded border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="btn-secondary px-4 py-2">Previous</button>
             <span className="text-sm text-gray-600">Page {result.pagination.page} of {Math.max(result.pagination.totalPages, 1)}</span>
-            <button type="button" disabled={page >= result.pagination.totalPages} onClick={() => setPage((current) => current + 1)} className="rounded border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+            <button type="button" disabled={page >= result.pagination.totalPages} onClick={() => setPage((current) => current + 1)} className="btn-secondary px-4 py-2">Next</button>
           </nav>
         </>
       )}
