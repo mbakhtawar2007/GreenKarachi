@@ -95,23 +95,23 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
       </header>
 
       {error && (
-        <p className="mb-4 border-l-4 border-red-700 bg-red-50 p-3 text-red-900" role="alert">
+        <p className="mb-6 rounded-r-xl border-l-4 border-red-700 bg-red-50 p-4 text-red-900" role="alert">
           {error}
         </p>
       )}
       {message && (
-        <p className="mb-4 border-l-4 border-green-700 bg-green-50 p-3 text-green-950" role="status">
+        <p className="mb-6 rounded-r-xl border-l-4 border-green-700 bg-green-50 p-4 text-green-900" role="status">
           {message}
         </p>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <label className="flex cursor-pointer items-center gap-2 py-2 text-sm font-medium text-gray-700">
           <input
             type="checkbox"
             checked={unreadOnly}
             onChange={(event) => setUnreadOnly(event.target.checked)}
-            className="h-4 w-4 rounded border-gray-300"
+            className="h-4 w-4 rounded border-gray-300 accent-green-800"
           />
           Unread only
         </label>
@@ -119,7 +119,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
           type="button"
           disabled={busy || unreadCount === 0}
           onClick={() => void markAllRead()}
-          className="rounded border border-green-800 px-3 py-2 text-sm font-semibold text-green-900 disabled:opacity-50"
+          className="btn-secondary px-3 py-2 text-sm"
         >
           Mark all as read
         </button>
@@ -129,35 +129,35 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
       </div>
 
       {loading && (
-        <p className="py-6 text-gray-600" role="status">
+        <p className="py-12 text-center text-gray-600" role="status">
           Loading notifications...
         </p>
       )}
       {!loading && notifications.length === 0 && (
-        <p className="border-y border-green-200 py-6 text-gray-600">
+        <p className="border-y border-green-200 py-12 text-center text-gray-600">
           {unreadOnly ? 'No unread notifications.' : 'No notifications yet. Quote, order, offer, and pledge updates will appear here.'}
         </p>
       )}
       {!loading && notifications.length > 0 && (
-        <div className="divide-y divide-green-200 border-y border-green-200">
+        <div className="card divide-y divide-green-100 overflow-hidden">
           {notifications.map((notification) => (
-            <article key={notification.id} className={`py-4 ${notification.is_read ? '' : 'bg-green-50'}`}>
+            <article key={notification.id} className={`px-4 py-4 sm:px-5 ${notification.is_read ? '' : 'bg-green-50'}`}>
               <button
                 type="button"
                 onClick={() => void openNotification(notification)}
-                className="block w-full px-2 text-left focus:outline-none focus:ring-2 focus:ring-green-300"
+                className="block w-full rounded-xl px-2 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
                 aria-label={`${notification.is_read ? '' : 'Unread: '}${notification.title}`}
               >
                 <span className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className={`text-green-950 ${notification.is_read ? 'font-medium' : 'font-bold'}`}>
+                  <span className={`min-w-0 break-words text-green-950 ${notification.is_read ? 'font-medium' : 'font-bold'}`}>
                     {!notification.is_read && (
-                      <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-green-700" />
+                      <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 shrink-0 rounded-full bg-green-700" />
                     )}
                     {notification.title}
                   </span>
-                  <span className="text-xs text-gray-500">{formatDateTime(notification.created_at)}</span>
+                  <span className="shrink-0 text-xs text-gray-500">{formatDateTime(notification.created_at)}</span>
                 </span>
-                <span className="mt-1 block text-sm text-gray-700">{notification.body}</span>
+                <span className="mt-1 block break-words text-sm text-gray-700">{notification.body}</span>
                 {notification.link && <span className="mt-1 block text-sm font-semibold text-green-800">Open →</span>}
               </button>
             </article>
@@ -166,12 +166,12 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
       )}
 
       {!loading && totalPages > 1 && (
-        <nav className="mt-6 flex items-center gap-4" aria-label="Notifications pages">
+        <nav className="mt-6 flex flex-wrap items-center gap-4" aria-label="Notifications pages">
           <button
             type="button"
             disabled={page <= 1}
             onClick={() => void load(page - 1, unreadOnly)}
-            className="rounded border border-gray-400 px-3 py-2 text-sm font-semibold text-gray-800 disabled:opacity-50"
+            className="btn-secondary px-4 py-2"
           >
             Previous
           </button>
@@ -182,7 +182,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
             type="button"
             disabled={page >= totalPages}
             onClick={() => void load(page + 1, unreadOnly)}
-            className="rounded border border-gray-400 px-3 py-2 text-sm font-semibold text-gray-800 disabled:opacity-50"
+            className="btn-secondary px-4 py-2"
           >
             Next
           </button>
@@ -190,7 +190,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
       )}
 
       <p className="mt-8 text-sm text-gray-600">
-        Looking for a conversation? <Link className="font-semibold text-green-800 underline" to="/messages">Open your messages</Link>.
+        Looking for a conversation? <Link className="font-semibold text-green-800 underline underline-offset-4 hover:text-green-950" to="/messages">Open your messages</Link>.
       </p>
     </section>
   );

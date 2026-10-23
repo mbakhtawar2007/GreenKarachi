@@ -54,48 +54,50 @@ const NurseryDirectoryPage: React.FC = () => {
         <p className="mt-2 text-gray-600">Find nurseries by name, location, and verification status.</p>
       </header>
 
-      <form onSubmit={applyFilters} className="mb-8 grid grid-cols-1 gap-4 border-b border-green-200 pb-6 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-sm font-medium text-gray-700">Nursery name
-          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+      <form onSubmit={applyFilters} className="card mb-8 p-5 sm:p-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="label">Nursery name
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} className="input mt-1" />
         </label>
-        <label className="text-sm font-medium text-gray-700">City or address
-          <input value={location} onChange={(event) => setLocation(event.target.value)} className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+        <label className="label">City or address
+          <input value={location} onChange={(event) => setLocation(event.target.value)} className="input mt-1" />
         </label>
-        <label className="text-sm font-medium text-gray-700">Verification
-          <select value={verified} onChange={(event) => setVerified(event.target.value)} className="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200">
+        <label className="label">Verification
+          <select value={verified} onChange={(event) => setVerified(event.target.value)} className="input mt-1">
             <option value="">Any status</option>
             <option value="true">Verified</option>
             <option value="false">Not verified</option>
           </select>
         </label>
         <div className="flex items-end">
-          <button className="rounded bg-green-800 px-4 py-2 font-semibold text-white hover:bg-green-900">Search nurseries</button>
+          <button className="btn-primary">Search nurseries</button>
+        </div>
         </div>
       </form>
 
       {loading && <p className="py-12 text-center text-gray-600" role="status">Loading nurseries...</p>}
-      {!loading && error && <p className="border-l-4 border-red-700 bg-red-50 p-4 text-red-900" role="alert">{error}</p>}
+      {!loading && error && <p className="mb-6 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700" role="alert">{error}</p>}
       {!loading && !error && result?.nurseries.length === 0 && <p className="border-y border-green-200 py-12 text-center text-gray-600">No nurseries match this search.</p>}
       {!loading && !error && result && result.nurseries.length > 0 && <>
         <p className="mb-4 text-sm text-gray-600" aria-live="polite">{result.pagination.total} nursery{result.pagination.total === 1 ? '' : 'ies'} listed</p>
-        <div className="divide-y divide-green-200">
+        <div className="grid gap-5">
           {result.nurseries.map((nursery) => (
-            <article key={nursery.user_id} className="grid gap-3 py-5 sm:grid-cols-[1fr_auto] sm:items-start">
+            <article key={nursery.user_id} className="card grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-start">
               <div>
                 <h2 className="text-lg font-semibold text-green-950">{nursery.name}</h2>
                 <p className="mt-1 text-sm text-gray-600">{[nursery.city, nursery.address].filter(Boolean).join(' · ') || 'Location not provided'}</p>
-                {nursery.website && <a href={nursery.website} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-green-800 underline underline-offset-4">Visit website</a>}
+                {nursery.website && <a href={nursery.website} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-green-800 underline underline-offset-4 hover:text-green-950">Visit website</a>}
               </div>
-              <span className={`text-sm font-semibold ${nursery.is_verified ? 'text-green-800' : 'text-gray-600'}`}>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${nursery.is_verified ? 'bg-green-100 text-green-900' : nursery.verification_status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-900'}`}>
                 {nursery.is_verified ? 'Verified' : nursery.verification_status === 'REJECTED' ? 'Not verified' : 'Verification pending'}
               </span>
             </article>
           ))}
         </div>
         <nav aria-label="Nursery directory pages" className="mt-8 flex items-center justify-between border-t border-green-200 pt-4">
-          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="rounded border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+          <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="btn-secondary px-4 py-2">Previous</button>
           <span className="text-sm text-gray-600">Page {result.pagination.page} of {Math.max(result.pagination.totalPages, 1)}</span>
-          <button type="button" disabled={page >= result.pagination.totalPages} onClick={() => setPage((current) => current + 1)} className="rounded border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+          <button type="button" disabled={page >= result.pagination.totalPages} onClick={() => setPage((current) => current + 1)} className="btn-secondary px-4 py-2">Next</button>
         </nav>
       </>}
     </section>
