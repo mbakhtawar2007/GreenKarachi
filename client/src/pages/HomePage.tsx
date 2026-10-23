@@ -46,11 +46,11 @@ const HomePage: React.FC = () => {
       <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-950 via-green-900 to-green-700 px-6 py-14 text-white shadow-lift sm:px-10 sm:py-16 lg:px-14">
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/5" aria-hidden="true" />
         <div className="pointer-events-none absolute -bottom-32 right-40 h-64 w-64 rounded-full bg-green-400/10" aria-hidden="true" />
-        <div className="relative max-w-3xl">
+        <div className="relative min-w-0 max-w-3xl">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-green-100">
             🌿 B2B plant marketplace · Karachi
           </span>
-          <h1 className="mt-6 text-4xl font-bold leading-[1.08] text-white sm:text-5xl lg:text-6xl">
+          <h1 className="mt-6 text-balance break-words text-4xl font-bold leading-[1.08] text-white min-[480px]:text-5xl lg:text-6xl">
             Connecting plant buyers &amp; nursery owners
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-green-100/90">
@@ -103,7 +103,7 @@ const HomePage: React.FC = () => {
       <section aria-label="How GreenKarachi works">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-wider text-green-700">How it works</p>
-          <h2 className="mt-2 text-3xl font-bold text-green-950 sm:text-4xl">From quote to confirmed order</h2>
+          <h2 className="mt-2 text-balance text-3xl font-bold text-green-950 lg:text-4xl">From quote to confirmed order</h2>
         </div>
         <ol className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
           {steps.map((step, index) => (
@@ -123,7 +123,7 @@ const HomePage: React.FC = () => {
         <div className="grid gap-10 p-8 sm:p-10 lg:grid-cols-2 lg:p-12">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-green-300">Our difference</p>
-            <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">No nursery has to turn down a big order</h2>
+            <h2 className="mt-2 text-balance text-3xl font-bold text-white lg:text-4xl">No nursery has to turn down a big order</h2>
             <p className="mt-4 leading-relaxed text-green-100/90">
               When an order is bigger than one nursery's stock, the nursery opens a supply-gap request for
               just the missing quantity. Other nurseries offer their available stock, and only accepted
@@ -157,7 +157,7 @@ const HomePage: React.FC = () => {
 
       {/* Closing CTA */}
       <section className="text-center">
-        <h2 className="text-3xl font-bold text-green-950 sm:text-4xl">Running a nursery in Karachi?</h2>
+        <h2 className="text-balance text-3xl font-bold text-green-950 lg:text-4xl">Running a nursery in Karachi?</h2>
         <p className="mx-auto mt-3 max-w-xl leading-relaxed text-gray-600">
           List your plants, receive quotation requests, and collaborate with other nurseries on orders
           too big to fulfil alone.

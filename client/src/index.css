@@ -15,6 +15,9 @@
 
   body {
     margin: 0;
+    /* Clip (not hidden) so stray wide content can never cause sideways
+       scrolling, without breaking position: sticky. */
+    overflow-x: clip;
     font-family: theme('fontFamily.sans');
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
