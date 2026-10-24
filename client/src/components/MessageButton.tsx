@@ -38,7 +38,7 @@ const MessageButton: React.FC<MessageButtonProps> = ({ token, refType, refId, la
         type="button"
         disabled={busy}
         onClick={() => void open()}
-        className="rounded border border-green-800 px-3 py-2 text-sm font-semibold text-green-900 disabled:opacity-50"
+        className="btn-secondary px-3 py-1.5 text-sm"
       >
         {busy ? 'Opening...' : label}
       </button>

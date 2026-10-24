@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { AuthSession } from '../App';
 import { API_BASE_URL } from '../api/catalog';
 import { LogoMark } from '../components/Navbar';
@@ -10,6 +10,8 @@ type LoginPageProps = {
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('session') === 'expired';
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
@@ -92,6 +94,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               placeholder="••••••••"
             />
           </div>
+
+          {sessionExpired ? (
+            <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+              Your session expired. Please sign in again.
+            </p>
+          ) : null}
 
           {error ? (
             <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">

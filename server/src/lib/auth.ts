@@ -29,7 +29,7 @@ export const verifyPassword = async (plainText: string, hashedPassword: string):
   bcrypt.compare(plainText, hashedPassword);
 
 export const signToken = (payload: AuthTokenPayload): string =>
-  jwt.sign(payload, config.JWT_SECRET, { expiresIn: '24h' });
+  jwt.sign(payload, config.JWT_SECRET, { expiresIn: '48h' });
 
 export const verifyToken = (token: string): AuthTokenPayload =>
   jwt.verify(token, config.JWT_SECRET) as AuthTokenPayload;

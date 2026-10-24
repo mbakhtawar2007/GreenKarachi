@@ -42,6 +42,21 @@ export async function apiFetch<T>(path: string, token?: string, init: RequestIni
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.message || 'The request could not be completed.');
+  if (!response.ok) {
+    // An authenticated call rejected as unauthorized means the session token
+    // is invalid or expired: drop the stored session and send the user back
+    // to sign in instead of leaving every page showing an error banner.
+    // Unauthenticated (public) calls are untouched, and we never redirect
+    // while already on the login page.
+    if (response.status === 401 && token && window.location.pathname !== '/login') {
+      try {
+        localStorage.removeItem('greenkarachi-session');
+      } catch {
+        // Storage unavailable: the redirect below still ends the session view.
+      }
+      window.location.assign('/login?session=expired');
+    }
+    throw new Error(payload.message || 'The request could not be completed.');
+  }
   return payload as T;
 }

@@ -102,7 +102,7 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ session }) => {
         </p>
         {id && (
           <p className="mt-2 text-sm">
-            <Link className="font-semibold text-green-800 underline" to="/messages">
+            <Link className="inline-block py-1 font-semibold text-green-800 underline underline-offset-4 hover:text-green-950" to="/messages">
               ← All conversations
             </Link>
           </p>
@@ -110,38 +110,43 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ session }) => {
       </header>
 
       {error && (
-        <p className="mb-4 border-l-4 border-red-700 bg-red-50 p-3 text-red-900" role="alert">
+        <p className="mb-6 rounded-r-xl border-l-4 border-red-700 bg-red-50 p-4 text-red-900" role="alert">
           {error}
         </p>
       )}
       {loading && (
-        <p className="py-6 text-gray-600" role="status">
+        <p className="py-12 text-center text-gray-600" role="status">
           Loading messages...
         </p>
       )}
 
       {!loading && !id && conversations.length === 0 && !error && (
-        <p className="border-y border-green-200 py-6 text-gray-600">
+        <p className="border-y border-green-200 py-12 text-center text-gray-600">
           No conversations yet. Use the Message button on a quote request, order, supply-gap request, or project to
           start one.
         </p>
       )}
       {!loading && !id && conversations.length > 0 && (
-        <div className="divide-y divide-green-200 border-y border-green-200">
+        <div className="space-y-3">
           {conversations.map((thread) => (
-            <article key={thread.id} className="py-4">
+            <article key={thread.id} className="card p-4 transition hover:border-green-300 sm:p-5">
               <Link
                 to={`/messages/${thread.id}`}
-                className="block focus:outline-none focus:ring-2 focus:ring-green-300"
+                className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
                 aria-label={`Open conversation: ${thread.title}`}
               >
                 <span className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-semibold text-green-950">{thread.title}</span>
-                  <span className="text-xs text-gray-500">Updated {formatDateTime(thread.updated_at)}</span>
+                  <span className="min-w-0 break-words font-semibold text-green-950">{thread.title}</span>
+                  <span className="shrink-0 text-xs text-gray-500">Updated {formatDateTime(thread.updated_at)}</span>
                 </span>
-                <span className="mt-1 block text-sm text-gray-600">
-                  {refLabel(thread.ref_type)} · {thread.participant_ids.length} participant
-                  {thread.participant_ids.length === 1 ? '' : 's'}
+                <span className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-900">
+                    {refLabel(thread.ref_type)}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {thread.participant_ids.length} participant
+                    {thread.participant_ids.length === 1 ? '' : 's'}
+                  </span>
                 </span>
               </Link>
             </article>
@@ -150,10 +155,10 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ session }) => {
       )}
 
       {!loading && id && conversation && (
-        <div>
+        <div className="card p-5 sm:p-6">
           <div className="space-y-4" aria-live="polite">
             {messages.length === 0 && (
-              <p className="border-y border-green-200 py-6 text-gray-600">
+              <p className="py-12 text-center text-gray-600">
                 No messages yet. Say hello and coordinate the details of this {refLabel(conversation.ref_type).toLowerCase()} here.
               </p>
             )}
@@ -162,18 +167,22 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ session }) => {
               return (
                 <article
                   key={item.id}
-                  className={`max-w-2xl rounded border p-3 ${mine ? 'ml-auto border-green-300 bg-green-50' : 'border-gray-300 bg-white'}`}
+                  className={`max-w-[85%] break-words px-4 py-3 sm:max-w-[75%] ${
+                    mine
+                      ? 'ml-auto rounded-2xl rounded-br-md bg-green-800 text-white shadow-sm'
+                      : 'mr-auto rounded-2xl rounded-bl-md border border-green-900/10 bg-white shadow-sm'
+                  }`}
                 >
-                  <p className="text-xs font-semibold text-gray-600">
+                  <p className={`text-xs font-semibold ${mine ? 'text-green-100' : 'text-gray-500'}`}>
                     {mine ? 'You' : 'Other participant'} · {formatDateTime(item.created_at)}
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800">{item.body}</p>
+                  <p className={`mt-1 whitespace-pre-wrap text-sm ${mine ? 'text-white' : 'text-gray-800'}`}>{item.body}</p>
                 </article>
               );
             })}
           </div>
-          <form className="mt-6" onSubmit={(event) => void sendMessage(event)}>
-            <label className="block text-sm font-medium text-gray-700" htmlFor="message-body">
+          <form className="mt-6 border-t border-green-100 pt-5" onSubmit={(event) => void sendMessage(event)}>
+            <label className="label mb-1.5" htmlFor="message-body">
               Message
             </label>
             <textarea
@@ -184,13 +193,9 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ session }) => {
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Write a message about this record..."
-              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200"
+              className="input"
             />
-            <button
-              type="submit"
-              disabled={sending || !draft.trim()}
-              className="mt-3 rounded bg-green-800 px-4 py-2 font-semibold text-white disabled:opacity-50"
-            >
+            <button type="submit" disabled={sending || !draft.trim()} className="btn-primary mt-3">
               {sending ? 'Sending...' : 'Send message'}
             </button>
           </form>

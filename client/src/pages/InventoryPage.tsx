@@ -153,31 +153,31 @@ const InventoryPage: React.FC<{ session: AuthSession }> = ({ session }) => {
         <p className="mt-2 text-gray-600">Manage your nursery profile, listings, and available whole-plant stock.</p>
       </header>
 
-      {error && <p className="mb-4 border-l-4 border-red-700 bg-red-50 p-3 text-red-900" role="alert">{error}</p>}
-      {message && <p className="mb-4 border-l-4 border-green-700 bg-green-50 p-3 text-green-950" role="status">{message}</p>}
+      {error && <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700" role="alert">{error}</p>}
+      {message && <p className="mb-4 rounded-xl border border-green-200 bg-green-50 px-3.5 py-2.5 text-sm text-green-800" role="status">{message}</p>}
 
-      <details open={!hasProfile} className="mb-8 border-b border-green-200 pb-6">
+      <details open={!hasProfile} className="card mb-8 p-5 sm:p-6">
         <summary className="cursor-pointer text-xl font-semibold text-green-950">Nursery profile {hasProfile ? '(saved)' : '(required)'}</summary>
         <form onSubmit={saveProfile} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {([
             ['name', 'Nursery name', true], ['phone', 'Phone', false], ['city', 'City', false],
             ['address', 'Address', false], ['website', 'Website', false]
           ] as const).map(([key, label, required]) => (
-            <label key={key} className="text-sm font-medium text-gray-700">
+            <label key={key} className="label">
               {label}
               <input required={required} type={key === 'website' ? 'url' : 'text'} value={profile[key] ?? ''}
                 onChange={(event) => setProfileField(key, event.target.value)}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+                className="input mt-1" />
             </label>
           ))}
           <div className="sm:col-span-2">
-            <button disabled={saving} className="rounded bg-green-800 px-4 py-2 font-semibold text-white disabled:opacity-50">Save nursery profile</button>
+            <button disabled={saving} className="btn-primary">Save nursery profile</button>
           </div>
         </form>
       </details>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <section>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <section className="card p-5 sm:p-6">
           <h2 className="text-xl font-semibold text-green-950">{editingId ? 'Edit listing' : 'Add plant listing'}</h2>
           <form onSubmit={submitListing} className="mt-4 space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -187,36 +187,36 @@ const InventoryPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                 ['unitPrice', 'Unit price (PKR)', 'number'], ['availableQuantity', 'Available plants', 'number'],
                 ['minimumOrderQuantity', 'Minimum order quantity', 'number'], ['serviceArea', 'Service area', 'text']
               ] as const).map(([key, label, type]) => (
-                <label key={key} className="text-sm font-medium text-gray-700">
+                <label key={key} className="label">
                   {label}
                   <input required={!['species', 'height'].includes(key)} min={type === 'number' ? (key === 'unitPrice' ? '0.01' : key === 'minimumOrderQuantity' ? '1' : '0') : undefined}
                     step={key === 'unitPrice' ? '0.01' : type === 'number' ? '1' : undefined} type={type}
                     value={form[key] as string | number} onChange={(event) => setFormField(key, type === 'number' ? Number(event.target.value) : event.target.value)}
-                    className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+                    className="input mt-1" />
                 </label>
               ))}
             </div>
-            <label className="block text-sm font-medium text-gray-700">Description
+            <label className="label">Description
               <textarea rows={3} maxLength={2000} value={form.description} onChange={(event) => setFormField('description', event.target.value)}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+                className="input mt-1" />
             </label>
-            <label className="block text-sm font-medium text-gray-700">Image URLs (HTTP/HTTPS, one per line)
+            <label className="label">Image URLs (HTTP/HTTPS, one per line)
               <textarea rows={2} value={form.imageUrlsText} onChange={(event) => setFormField('imageUrlsText', event.target.value)}
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+                className="input mt-1" />
             </label>
-            <div className="flex gap-3">
-              <button disabled={saving || !hasProfile} className="rounded bg-green-800 px-4 py-2 font-semibold text-white disabled:opacity-50">
+            <div className="flex flex-wrap gap-3">
+              <button disabled={saving || !hasProfile} className="btn-primary">
                 {saving ? 'Saving...' : editingId ? 'Save listing' : 'Create listing'}
               </button>
-              {editingId && <button type="button" onClick={() => { setForm(emptyForm); setEditingId(null); }} className="rounded border border-green-800 px-4 py-2 font-semibold text-green-900">Cancel edit</button>}
+              {editingId && <button type="button" onClick={() => { setForm(emptyForm); setEditingId(null); }} className="btn-secondary">Cancel edit</button>}
             </div>
           </form>
         </section>
 
-        <section>
+        <section className="card p-5 sm:p-6">
           <h2 className="text-xl font-semibold text-green-950">Your listings</h2>
-          {loading && <p className="py-6 text-gray-600" role="status">Loading inventory...</p>}
-          {!loading && listings.length === 0 && <p className="border-y border-green-200 py-6 text-gray-600">No listings yet.</p>}
+          {loading && <p className="py-12 text-center text-gray-600" role="status">Loading inventory...</p>}
+          {!loading && listings.length === 0 && <p className="py-8 text-center text-gray-600">No listings yet.</p>}
           <div className="mt-4 divide-y divide-green-200">
             {listings.map((listing) => (
               <article key={listing.id} className="py-5">
@@ -225,17 +225,17 @@ const InventoryPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                     <h3 className="font-semibold text-green-950">{listing.name}</h3>
                     <p className="mt-1 text-sm text-gray-600">{listing.category}{listing.species ? ` · ${listing.species}` : ''}</p>
                   </div>
-                  <span className="text-xs font-semibold text-gray-700">{listing.status.replaceAll('_', ' ')}</span>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${listing.status === 'ACTIVE' ? 'bg-green-100 text-green-900' : listing.status === 'OUT_OF_STOCK' ? 'bg-amber-100 text-amber-900' : 'bg-gray-100 text-gray-700'}`}>{listing.status.replaceAll('_', ' ')}</span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-end gap-3">
-                  <label className="text-sm text-gray-700">Available plants
+                  <label className="label">Available plants
                     <input type="number" min="0" step="1" value={stockValues[listing.id] ?? listing.available_quantity}
                       onChange={(event) => setStockValues((current) => ({ ...current, [listing.id]: event.target.value }))}
-                      className="mt-1 block w-32 rounded border border-gray-300 px-3 py-2 focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-200" />
+                      className="input mt-1 w-32" />
                   </label>
-                  <button type="button" onClick={() => void saveStock(listing)} className="rounded border border-green-800 px-3 py-2 text-sm font-semibold text-green-900">Update stock</button>
-                  <button type="button" onClick={() => startEdit(listing)} className="rounded border border-gray-400 px-3 py-2 text-sm font-semibold text-gray-800">Edit</button>
-                  {listing.status !== 'ARCHIVED' && <button type="button" onClick={() => void archiveListing(listing)} className="rounded border border-red-700 px-3 py-2 text-sm font-semibold text-red-800">Archive</button>}
+                  <button type="button" onClick={() => void saveStock(listing)} className="btn-secondary px-3 py-2 text-sm">Update stock</button>
+                  <button type="button" onClick={() => startEdit(listing)} className="btn-secondary px-3 py-2 text-sm">Edit</button>
+                  {listing.status !== 'ARCHIVED' && <button type="button" onClick={() => void archiveListing(listing)} className="rounded-xl bg-red-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50">Archive</button>}
                 </div>
               </article>
             ))}
