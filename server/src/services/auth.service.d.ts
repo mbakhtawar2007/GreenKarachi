@@ -3,17 +3,17 @@ export declare const registerSchema: z.ZodObject<{
     name: z.ZodString;
     email: z.ZodString;
     password: z.ZodString;
-    role: z.ZodOptional<z.ZodString>;
+    role: z.ZodOptional<z.ZodEnum<["BUYER", "NURSERY_OWNER", "PLANTATION_ORGANIZER", "DONOR", "DONOR_INVESTOR"]>>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     email: string;
     password: string;
-    role?: string | undefined;
+    role?: "BUYER" | "NURSERY_OWNER" | "PLANTATION_ORGANIZER" | "DONOR" | "DONOR_INVESTOR" | undefined;
 }, {
     name: string;
     email: string;
     password: string;
-    role?: string | undefined;
+    role?: "BUYER" | "NURSERY_OWNER" | "PLANTATION_ORGANIZER" | "DONOR" | "DONOR_INVESTOR" | undefined;
 }>;
 export declare const loginSchema: z.ZodObject<{
     email: z.ZodString;

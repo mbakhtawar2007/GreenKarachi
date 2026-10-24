@@ -9,6 +9,7 @@ import {
   verifyPassword,
   verifyToken
 } from '../src/lib/auth';
+import { registerSchema } from '../src/services/auth.service';
 
 describe('auth helpers', () => {
   test('hashes and verifies a password', async () => {
@@ -42,6 +43,29 @@ describe('auth helpers', () => {
 
     assert.equal(decoded.id, 'user-1');
     assert.equal(decoded.email, 'demo@example.com');
+  });
+
+  test('registration schema rejects ADMIN as a self-registered role', () => {
+    assert.throws(() =>
+      registerSchema.parse({
+        name: 'Attacker',
+        email: 'attacker@example.com',
+        password: 'Password123',
+        role: 'ADMIN'
+      })
+    );
+  });
+
+  test('registration schema accepts the public roles', () => {
+    for (const role of ['BUYER', 'NURSERY_OWNER', 'PLANTATION_ORGANIZER', 'DONOR', 'DONOR_INVESTOR']) {
+      const parsed = registerSchema.parse({
+        name: 'Legit User',
+        email: 'legit@example.com',
+        password: 'Password123',
+        role
+      });
+      assert.equal(parsed.role, role);
+    }
   });
 
   test('session tokens expire after 48 hours', () => {

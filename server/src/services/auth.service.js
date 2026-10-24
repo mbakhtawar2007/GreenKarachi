@@ -8,7 +8,7 @@ exports.registerSchema = zod_1.z.object({
     name: zod_1.z.string().trim().min(2, 'Name must be at least 2 characters long.'),
     email: zod_1.z.string().trim().email('Email is invalid.'),
     password: zod_1.z.string().min(8, 'Password must be at least 8 characters long.'),
-    role: zod_1.z.string().optional()
+    role: zod_1.z.enum(['BUYER', 'NURSERY_OWNER', 'PLANTATION_ORGANIZER', 'DONOR', 'DONOR_INVESTOR']).optional()
 });
 exports.loginSchema = zod_1.z.object({
     email: zod_1.z.string().trim().email('Email is invalid.'),

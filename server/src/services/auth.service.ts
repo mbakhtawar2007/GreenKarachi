@@ -6,7 +6,10 @@ export const registerSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters long.'),
   email: z.string().trim().email('Email is invalid.'),
   password: z.string().min(8, 'Password must be at least 8 characters long.'),
-  role: z.string().optional()
+  // ADMIN is deliberately not a registrable role: granting it here would let
+  // anyone self-register as an administrator. Admin accounts are created by
+  // direct promotion only (see promote-admin.sql).
+  role: z.enum(['BUYER', 'NURSERY_OWNER', 'PLANTATION_ORGANIZER', 'DONOR', 'DONOR_INVESTOR']).optional()
 });
 
 export const loginSchema = z.object({
