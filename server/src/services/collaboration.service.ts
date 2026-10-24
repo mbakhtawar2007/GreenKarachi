@@ -190,11 +190,12 @@ type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 
 const todayIsoDate = () => new Date().toISOString().slice(0, 10);
 
-// Eligibility policy (current phase): a supplier must hold the
-// NURSERY_OWNER role (enforced on the routes) and have a nursery profile,
-// and must not be the requester. Nursery verification review is Phase 7
-// scope, so - exactly as Phases 3 and 4 handled listings and quotations -
-// having a nursery profile is the eligibility bar applied here today.
+// Eligibility policy, decided 2026-10-24 (audit follow-up): a supplier
+// must hold the NURSERY_OWNER role (enforced on the routes) and have a
+// nursery profile, and must not be the requester. Verification is NOT
+// required: requiring a verified nursery today would block every current
+// supplier, since no nursery is verified yet. Revisit only once verified
+// nurseries exist in meaningful numbers.
 const getNursery = async (supabase: SupabaseClient, userId: string) => {
   const { data, error } = await supabase
     .from('nurseries')
@@ -343,6 +344,11 @@ export const updateSupplyGapRequest = async (
   return enrichRequest(supabase, data, requesterUserId);
 };
 
+// Closure policy, decided 2026-10-24 (audit follow-up): closing or
+// cancelling with ACCEPTED offers is allowed. Blocking it would trap the
+// request forever, because ACCEPTED offers have no outgoing transition
+// and CLOSED/CANCELLED requests have none either; accepted commitments
+// remain visible as history after closure.
 export const changeSupplyGapRequestStatus = async (
   requesterUserId: string,
   requestId: string,

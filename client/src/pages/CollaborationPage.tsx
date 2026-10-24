@@ -15,6 +15,7 @@ import {
 } from '../api/collaboration';
 import type { AuthSession } from '../App';
 import MessageButton from '../components/MessageButton';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
 const formatMoney = (value: string | number) => currency.format(Number(value));
@@ -101,8 +102,11 @@ const CollaborationPage: React.FC<{ session: AuthSession }> = ({ session }) => {
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [offerForms, setOfferForms] = React.useState<Record<string, OfferForm>>({});
 
-  const loadData = async () => {
-    setLoading(true);
+  // Silent refresh updates requests and offers in place without a
+  // spinner and without touching the request/offer forms. A failed
+  // silent refresh keeps the previous data.
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [mine, open, offers] = await Promise.all([
         getMySupplyGapRequests(session.token),
@@ -114,13 +118,14 @@ const CollaborationPage: React.FC<{ session: AuthSession }> = ({ session }) => {
       setMyOffers(offers.supplyOffers);
       setError('');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load collaboration data.');
+      if (!silent) setError(loadError instanceof Error ? loadError.message : 'Unable to load collaboration data.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   React.useEffect(() => { void loadData(); }, [session.token]);
+  useAutoRefresh(() => { void loadData(true); }, 30000);
 
   const runAction = async (action: () => Promise<unknown>, success: string) => {
     setSaving(true);
@@ -240,7 +245,7 @@ const CollaborationPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                 <strong>{formGap} plants</strong>. The server recalculates this when you save.
               </p>
               <label className="label">Needed by
-                <input required type="date" value={form.neededBy}
+                <input required type="date" min={new Date().toLocaleDateString('en-CA')} value={form.neededBy}
                   onChange={(event) => setForm((current) => ({ ...current, neededBy: event.target.value }))} className={inputClass} />
               </label>
               <label className="label">Area

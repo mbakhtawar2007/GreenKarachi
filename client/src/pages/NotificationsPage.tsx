@@ -37,7 +37,13 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
         setError('');
       }
       try {
-        const data = await getMyNotifications(session.token, targetPage, onlyUnread);
+        // If the current page no longer exists (e.g. "Unread only" shrank
+        // the list from 3 pages to 1), fall back to page 1 instead of
+        // showing an empty "Page 3 of 1".
+        let data = await getMyNotifications(session.token, targetPage, onlyUnread);
+        if (data.pagination.totalPages > 0 && targetPage > data.pagination.totalPages) {
+          data = await getMyNotifications(session.token, 1, onlyUnread);
+        }
         setNotifications(data.notifications);
         setPage(data.pagination.page);
         setTotalPages(data.pagination.totalPages);

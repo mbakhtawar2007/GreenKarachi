@@ -15,11 +15,11 @@ import {
   type ContactPreference,
   type PlantationProject,
   type Pledge,
-  type PledgeType,
-  type ProjectFilters
+  type PledgeType
 } from '../api/projects';
 import type { AuthSession } from '../App';
 import MessageButton from '../components/MessageButton';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
 const formatMoney = (value: string | number | null | undefined) =>
@@ -170,20 +170,33 @@ const ProjectsPage: React.FC<{ session: AuthSession | null }> = ({ session }) =>
   const [pledgeForm, setPledgeForm] = React.useState<PledgeForm>(emptyPledgeForm);
   const [progressForms, setProgressForms] = React.useState<Record<string, ProgressForm>>({});
 
-  const loadDiscovery = async (nextFilters: ProjectFilters = {
-    query: filters.query || undefined,
-    location: filters.location || undefined,
-    species: filters.species || undefined,
-    status: filters.status,
-    minTreeTarget: filters.minTreeTarget ? Number(filters.minTreeTarget) : undefined,
-    maxTreeTarget: filters.maxTreeTarget ? Number(filters.maxTreeTarget) : undefined
-  }) => {
-    const result = await discoverProjects(nextFilters, session?.token);
+  const [discoveryPage, setDiscoveryPage] = React.useState(1);
+  const [discoveryTotalPages, setDiscoveryTotalPages] = React.useState(1);
+
+  // The server already paginates discovery; the client used to load one
+  // unpaged set, so a growing project list had no pages at all.
+  const loadDiscovery = async (pageOverride?: number) => {
+    const page = pageOverride ?? discoveryPage;
+    const result = await discoverProjects({
+      query: filters.query || undefined,
+      location: filters.location || undefined,
+      species: filters.species || undefined,
+      status: filters.status,
+      minTreeTarget: filters.minTreeTarget ? Number(filters.minTreeTarget) : undefined,
+      maxTreeTarget: filters.maxTreeTarget ? Number(filters.maxTreeTarget) : undefined,
+      page,
+      pageSize: 9
+    }, session?.token);
     setProjects(result.projects);
+    setDiscoveryPage(result.pagination.page);
+    setDiscoveryTotalPages(Math.max(result.pagination.totalPages, 1));
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  // Silent refresh updates discovery, pledges, and (when open) the
+  // selected project's detail in place, without a spinner and without
+  // touching any form. A failed silent refresh keeps the previous data.
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       await loadDiscovery();
       if (session) {
@@ -193,16 +206,21 @@ const ProjectsPage: React.FC<{ session: AuthSession | null }> = ({ session }) =>
           const mine = await getMyProjects(session.token);
           setMyProjects(mine.projects);
         }
+        if (silent && selected) {
+          const refreshed = await getProject(selected.id, session.token);
+          setSelected(refreshed.project);
+        }
       }
       setError('');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load projects.');
+      if (!silent) setError(loadError instanceof Error ? loadError.message : 'Unable to load projects.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   React.useEffect(() => { void loadData(); }, [session?.token]);
+  useAutoRefresh(() => { void loadData(true); }, 30000);
 
   const runAction = async (action: () => Promise<unknown>, success: string) => {
     setSaving(true);
@@ -338,7 +356,7 @@ const ProjectsPage: React.FC<{ session: AuthSession | null }> = ({ session }) =>
         {/* Discovery filters */}
         <form
           className="card mt-6 grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-3 xl:grid-cols-6"
-          onSubmit={(event) => { event.preventDefault(); void runAction(loadDiscovery, 'Filters applied.'); }}
+          onSubmit={(event) => { event.preventDefault(); setDiscoveryPage(1); void runAction(() => loadDiscovery(1), 'Filters applied.'); }}
         >
           <label className="label">Search<input className={inputClass} value={filters.query} onChange={(e) => setFilters({ ...filters, query: e.target.value })} placeholder="Title, description…" /></label>
           <label className="label">Location<input className={inputClass} value={filters.location} onChange={(e) => setFilters({ ...filters, location: e.target.value })} placeholder="Clifton" /></label>
@@ -363,6 +381,20 @@ const ProjectsPage: React.FC<{ session: AuthSession | null }> = ({ session }) =>
           <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => <ProjectCard key={project.id} project={project} onSelect={(id) => void selectProject(id)} />)}
           </div>
+        )}
+
+        {!loading && discoveryTotalPages > 1 && (
+          <nav className="mt-6 flex flex-wrap items-center gap-4" aria-label="Projects pages">
+            <button type="button" disabled={discoveryPage <= 1} onClick={() => void loadDiscovery(discoveryPage - 1)} className="btn-secondary px-4 py-2">
+              Previous
+            </button>
+            <span className="text-sm text-gray-600">
+              Page {discoveryPage} of {discoveryTotalPages}
+            </span>
+            <button type="button" disabled={discoveryPage >= discoveryTotalPages} onClick={() => void loadDiscovery(discoveryPage + 1)} className="btn-secondary px-4 py-2">
+              Next
+            </button>
+          </nav>
         )}
 
         {/* Detail view */}
@@ -534,8 +566,8 @@ const ProjectsPage: React.FC<{ session: AuthSession | null }> = ({ session }) =>
                 <label className="label">Title<input className={inputClass} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
                 <label className="label">Location<input className={inputClass} required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Clifton, Karachi" /></label>
                 <label className="label sm:col-span-2">Description<textarea className={inputClass} required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-                <label className="label">Start date<input className={inputClass} type="date" required value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></label>
-                <label className="label">End date<input className={inputClass} type="date" required value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></label>
+                <label className="label">Start date<input className={inputClass} type="date" min={new Date().toLocaleDateString('en-CA')} required value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></label>
+                <label className="label">End date<input className={inputClass} type="date" min={form.startDate || new Date().toLocaleDateString('en-CA')} required value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></label>
                 <label className="label">Tree target<input className={inputClass} type="number" min="1" step="1" required value={form.treeTarget} onChange={(e) => setForm({ ...form, treeTarget: e.target.value })} /></label>
                 <label className="label">Funding target in PKR (optional goal, not funds received)<input className={inputClass} type="number" min="1" step="0.01" value={form.fundingTarget} onChange={(e) => setForm({ ...form, fundingTarget: e.target.value })} /></label>
                 <label className="label">Contact preference

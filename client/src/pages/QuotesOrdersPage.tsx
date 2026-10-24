@@ -57,21 +57,59 @@ const QuotesOrdersPage: React.FC<{ session: AuthSession }> = ({ session }) => {
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const jobs: Promise<unknown>[] = [];
-      if (isBuyer) {
-        jobs.push(
-          apiFetch<{ listings: PlantListing[] }>('/api/catalog/listings?pageSize=50').then((data) => setListings(data.listings)),
-          getMyQuoteRequests(session.token).then((data) => setMyRequests(data.quoteRequests)),
-          getMyOrders(session.token).then((data) => setOrders(data.orders))
-        );
+      // A dual-role user is both a buyer and a nursery: their own orders
+      // and incoming orders used to write to the same state, so whichever
+      // request finished last silently overwrote the other list. Merge
+      // both lists by order id instead.
+      const orderLists: Order[][] = [];
+      let incoming: QuoteRequest[] = [];
+      const [buyerResult, nurseryResult] = await Promise.all([
+        isBuyer
+          ? Promise.all([
+              apiFetch<{ listings: PlantListing[] }>('/api/catalog/listings?pageSize=50'),
+              getMyQuoteRequests(session.token),
+              getMyOrders(session.token)
+            ])
+          : Promise.resolve(null),
+        isNursery
+          ? Promise.all([
+              getIncomingQuoteRequests(session.token),
+              getIncomingOrders(session.token)
+            ])
+          : Promise.resolve(null)
+      ]);
+      if (buyerResult) {
+        const [listingData, myRequestData, myOrderData] = buyerResult;
+        setListings(listingData.listings);
+        setMyRequests(myRequestData.quoteRequests);
+        orderLists.push(myOrderData.orders);
       }
-      if (isNursery) {
-        jobs.push(
-          getIncomingQuoteRequests(session.token).then((data) => setIncomingRequests(data.quoteRequests)),
-          getIncomingOrders(session.token).then((data) => setOrders(data.orders))
-        );
+      if (nurseryResult) {
+        const [incomingData, incomingOrderData] = nurseryResult;
+        incoming = incomingData.quoteRequests;
+        setIncomingRequests(incoming);
+        orderLists.push(incomingOrderData.orders);
       }
-      await Promise.all(jobs);
+      setOrders([...new Map(orderLists.flat().map((order) => [order.id, order])).values()]);
+      // Prefill quotation forms for pending requests that have no edits
+      // yet. Previously the form started empty and the first keystroke
+      // created an entry with a blank unit price, wiping the prefilled
+      // listing price the nursery saw before typing.
+      setQuoteForms((current) => {
+        const next = { ...current };
+        for (const request of incoming) {
+          if (request.status === 'PENDING' && !next[request.id]) {
+            next[request.id] = {
+              unitPrice: String(Number(request.listing?.unit_price ?? 0) || ''),
+              quantity: String(request.quantity),
+              deliveryCharge: '0',
+              terms: '',
+              validityDays: '7'
+            };
+          }
+        }
+        return next;
+      });
       setError('');
     } catch (loadError) {
       if (!silent) setError(loadError instanceof Error ? loadError.message : 'Unable to load quotes and orders.');
@@ -182,7 +220,7 @@ const QuotesOrdersPage: React.FC<{ session: AuthSession }> = ({ session }) => {
                     className="input mt-1" />
                 </label>
                 <label className="label">Delivery date
-                  <input required type="date" value={form.deliveryDate}
+                  <input required type="date" min={new Date().toLocaleDateString('en-CA')} value={form.deliveryDate}
                     onChange={(event) => setForm((current) => ({ ...current, deliveryDate: event.target.value }))}
                     className="input mt-1" />
                 </label>

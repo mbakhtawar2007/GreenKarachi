@@ -1,5 +1,6 @@
 import React from 'react';
 import { apiFetch } from '../api/catalog';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 type Nursery = {
   user_id: string;
@@ -26,19 +27,26 @@ const NurseryDirectoryPage: React.FC = () => {
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    let active = true;
+  // Silent refresh updates the directory in place without a spinner
+  // and without touching the search inputs. A failed silent refresh
+  // keeps the previous list.
+  const loadNurseries = React.useCallback(async (silent: boolean) => {
     const params = new URLSearchParams({ page: String(page), pageSize: '12' });
     Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
-    setLoading(true);
-    apiFetch<NurseryResponse>(`/api/catalog/listings/nurseries?${params.toString()}`)
-      .then((data) => { if (active) setResult(data); })
-      .catch((requestError: unknown) => {
-        if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load nurseries.');
-      })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    if (!silent) setLoading(true);
+    try {
+      const data = await apiFetch<NurseryResponse>(`/api/catalog/listings/nurseries?${params.toString()}`);
+      setResult(data);
+      setError('');
+    } catch (requestError: unknown) {
+      if (!silent) setError(requestError instanceof Error ? requestError.message : 'Unable to load nurseries.');
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [filters, page]);
+
+  React.useEffect(() => { void loadNurseries(false); }, [loadNurseries]);
+  useAutoRefresh(() => { void loadNurseries(true); }, 30000);
 
   const applyFilters = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

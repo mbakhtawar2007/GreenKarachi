@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AuthSession } from '../App';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import {
   decideNurseryVerification,
   decideUserVerification,
@@ -67,17 +68,31 @@ const useAdminList = <T,>(load: () => Promise<{ items: T[]; pagination: Paginati
   const [pagination, setPagination] = React.useState<Pagination | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
+  const loadRef = React.useRef(load);
+  loadRef.current = load;
+  // Silent refresh updates the list in place without a spinner; a failed
+  // silent refresh keeps the previous list.
+  const fetchList = React.useCallback(async (silent: boolean) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
+    try {
+      const data = await loadRef.current();
+      setItems(data.items);
+      setPagination(data.pagination);
+      setError('');
+    } catch (requestError: unknown) {
+      if (!silent) setError(requestError instanceof Error ? requestError.message : 'Unable to load.');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, []);
   React.useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    load()
-      .then((data) => { if (active) { setItems(data.items); setPagination(data.pagination); } })
-      .catch((requestError: unknown) => { if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load.'); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    void fetchList(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
+  useAutoRefresh(() => { void fetchList(true); }, 30000);
   return { items, pagination, loading, error };
 };
 
@@ -228,12 +243,22 @@ const VerificationSection: React.FC<SectionProps> = ({ token, refreshKey, reques
 
 const UsersSection: React.FC<SectionProps> = ({ token, refreshKey, requestAction }) => {
   const [queryText, setQueryText] = React.useState('');
+  // Debounced search: the list used to refetch on every keystroke.
+  // It now waits 400ms after the user stops typing.
+  const [debouncedQuery, setDebouncedQuery] = React.useState('');
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(queryText);
+      setPage(1);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [queryText]);
   const [suspended, setSuspended] = React.useState('');
   const [page, setPage] = React.useState(1);
   const users = useAdminList<AdminUser>(
-    () => fetchAdminUsers(token, { query: queryText || undefined, suspended: suspended || undefined, page: String(page), pageSize: '20' })
+    () => fetchAdminUsers(token, { query: debouncedQuery || undefined, suspended: suspended || undefined, page: String(page), pageSize: '20' })
       .then((data) => ({ items: data.users, pagination: data.pagination })),
-    [token, queryText, suspended, page, refreshKey]
+    [token, debouncedQuery, suspended, page, refreshKey]
   );
 
   const suspend = (user: AdminUser) => requestAction({
@@ -263,7 +288,7 @@ const UsersSection: React.FC<SectionProps> = ({ token, refreshKey, requestAction
       <h2 className="mb-4 text-xl font-semibold text-green-950">Users &amp; suspension</h2>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="label flex items-center gap-2">Search
-          <input value={queryText} onChange={(event) => { setQueryText(event.target.value); setPage(1); }} placeholder="Name or email" className="input w-auto py-1.5 text-sm" />
+          <input value={queryText} onChange={(event) => setQueryText(event.target.value)} placeholder="Name or email" className="input w-auto py-1.5 text-sm" />
         </label>
         <label className="label flex items-center gap-2">Suspension
           <select value={suspended} onChange={(event) => { setSuspended(event.target.value); setPage(1); }} className="input w-auto py-1.5 text-sm">
