@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import type { AuthSession } from '../App';
 import { getUnreadNotificationCount } from '../api/notifications';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 type NavbarProps = {
   session: AuthSession | null;
@@ -36,6 +37,15 @@ const Navbar: React.FC<NavbarProps> = ({ session, onLogout }) => {
       cancelled = true;
     };
   }, [session]);
+
+  // The badge used to load only at sign-in. It now refreshes in the
+  // background while signed in; a failed refresh keeps the last count.
+  useAutoRefresh(() => {
+    if (!session) return;
+    getUnreadNotificationCount(session.token)
+      .then((data) => setUnreadCount(data.unreadCount))
+      .catch(() => undefined);
+  }, 30000);
 
   const unreadBadge = unreadCount > 0 && (
     <span

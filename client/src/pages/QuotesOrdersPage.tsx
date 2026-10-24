@@ -17,6 +17,7 @@ import {
 } from '../api/quotes';
 import type { AuthSession } from '../App';
 import MessageButton from '../components/MessageButton';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 const currency = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 2 });
 const formatMoney = (value: string | number) => currency.format(Number(value));
@@ -50,8 +51,11 @@ const QuotesOrdersPage: React.FC<{ session: AuthSession }> = ({ session }) => {
   const idempotencyKey = React.useRef<string>(crypto.randomUUID());
   const [quoteForms, setQuoteForms] = React.useState<Record<string, { unitPrice: string; quantity: string; deliveryCharge: string; terms: string; validityDays: string }>>({});
 
-  const loadData = async () => {
-    setLoading(true);
+  // Silent refresh updates requests and orders in place without a
+  // spinner and without touching the quote/request forms. A failed
+  // silent refresh keeps the previous data.
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const jobs: Promise<unknown>[] = [];
       if (isBuyer) {
@@ -70,13 +74,14 @@ const QuotesOrdersPage: React.FC<{ session: AuthSession }> = ({ session }) => {
       await Promise.all(jobs);
       setError('');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Unable to load quotes and orders.');
+      if (!silent) setError(loadError instanceof Error ? loadError.message : 'Unable to load quotes and orders.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   React.useEffect(() => { void loadData(); }, [session.token]);
+  useAutoRefresh(() => { void loadData(true); }, 30000);
 
   const runAction = async (action: () => Promise<unknown>, success: string) => {
     setSaving(true);

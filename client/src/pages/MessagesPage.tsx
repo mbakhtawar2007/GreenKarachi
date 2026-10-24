@@ -9,6 +9,7 @@ import {
   type ConversationMessage
 } from '../api/conversations';
 import type { AuthSession } from '../App';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 type MessagesPageProps = {
   session: AuthSession;
@@ -42,38 +43,47 @@ const MessagesPage: React.FC<MessagesPageProps> = ({ session }) => {
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState('');
 
-  React.useEffect(() => {
-    let cancelled = false;
-    const load = async (): Promise<void> => {
+  // Silent refresh: new messages appear without a spinner and without
+  // touching the message draft. A failed silent refresh keeps the
+  // previous messages instead of flashing an error.
+  const load = async (silent: boolean): Promise<void> => {
+    if (!silent) {
       setLoading(true);
       setError('');
-      try {
-        if (id) {
-          const [{ conversation: thread }, { messages: threadMessages }] = await Promise.all([
-            getConversation(session.token, id),
-            getConversationMessages(session.token, id)
-          ]);
-          if (cancelled) return;
-          setConversation(thread);
-          setMessages(threadMessages);
-        } else {
-          const { conversations: mine } = await getMyConversations(session.token);
-          if (cancelled) return;
-          setConversations(mine);
-        }
-      } catch (caught) {
-        if (!cancelled) {
-          setError(caught instanceof Error ? caught.message : 'Could not load messages.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+    }
+    try {
+      if (id) {
+        const [{ conversation: thread }, { messages: threadMessages }] = await Promise.all([
+          getConversation(session.token, id),
+          getConversationMessages(session.token, id)
+        ]);
+        setConversation(thread);
+        // Keep a message the user just sent if a background refresh
+        // started before it reached the server's list.
+        setMessages((current) => {
+          const seen = new Set(threadMessages.map((item) => item.id));
+          const localOnly = current.filter((item) => !seen.has(item.id));
+          return [...threadMessages, ...localOnly].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+        setError('');
+      } else {
+        const { conversations: mine } = await getMyConversations(session.token);
+        setConversations(mine);
+        setError('');
       }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [id, session.token]);
+    } catch (caught) {
+      if (!silent) {
+        setError(caught instanceof Error ? caught.message : 'Could not load messages.');
+      }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  React.useEffect(() => { void load(false); }, [id, session.token]);
+  useAutoRefresh(() => { void load(true); }, 15000);
 
   const sendMessage = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();

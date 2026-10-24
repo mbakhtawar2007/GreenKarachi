@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch, type PlantListing } from '../api/catalog';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { reportReasons, submitReport, type ReportReason } from '../api/reports';
 import type { AuthSession } from '../App';
 
@@ -59,24 +60,31 @@ const MarketplacePage: React.FC<{ session: AuthSession | null }> = ({ session })
     }
   };
 
-  React.useEffect(() => {
-    let active = true;
+  // A silent refresh updates the list in place: no spinner, and the
+  // filter draft and report form are untouched. A failed silent refresh
+  // keeps the previous list instead of flashing an error.
+  const loadListings = React.useCallback(async (silent: boolean) => {
     const params = new URLSearchParams({ page: String(page), pageSize: '12' });
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.set(key, value);
     });
-
-    setLoading(true);
-    setError('');
-    apiFetch<ListingResponse>(`/api/catalog/listings?${params.toString()}`)
-      .then((data) => { if (active) setResult(data); })
-      .catch((requestError: unknown) => {
-        if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load listings.');
-      })
-      .finally(() => { if (active) setLoading(false); });
-
-    return () => { active = false; };
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
+    try {
+      const data = await apiFetch<ListingResponse>(`/api/catalog/listings?${params.toString()}`);
+      setResult(data);
+      setError('');
+    } catch (requestError: unknown) {
+      if (!silent) setError(requestError instanceof Error ? requestError.message : 'Unable to load listings.');
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [filters, page]);
+
+  React.useEffect(() => { void loadListings(false); }, [loadListings]);
+  useAutoRefresh(() => { void loadListings(true); }, 30000);
 
   const handleFilterChange = (key: string, value: string) => {
     setDraft((current) => ({ ...current, [key]: value }));

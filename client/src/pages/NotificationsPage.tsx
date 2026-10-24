@@ -7,6 +7,7 @@ import {
   type AppNotification
 } from '../api/notifications';
 import type { AuthSession } from '../App';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 type NotificationsPageProps = {
   session: AuthSession;
@@ -27,20 +28,25 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
   const [message, setMessage] = React.useState('');
   const [busy, setBusy] = React.useState(false);
 
+  // Silent refresh updates the list and unread count in place, without
+  // a spinner; a failed silent refresh keeps the previous list.
   const load = React.useCallback(
-    async (targetPage: number, onlyUnread: boolean) => {
-      setLoading(true);
-      setError('');
+    async (targetPage: number, onlyUnread: boolean, silent = false) => {
+      if (!silent) {
+        setLoading(true);
+        setError('');
+      }
       try {
         const data = await getMyNotifications(session.token, targetPage, onlyUnread);
         setNotifications(data.notifications);
         setPage(data.pagination.page);
         setTotalPages(data.pagination.totalPages);
         setUnreadCount(data.unreadCount);
+        setError('');
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : 'Could not load notifications.');
+        if (!silent) setError(caught instanceof Error ? caught.message : 'Could not load notifications.');
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     },
     [session.token]
@@ -49,6 +55,8 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ session }) => {
   React.useEffect(() => {
     void load(1, unreadOnly);
   }, [load, unreadOnly]);
+
+  useAutoRefresh(() => { void load(page, unreadOnly, true); }, 30000);
 
   const openNotification = async (notification: AppNotification): Promise<void> => {
     if (!notification.is_read) {

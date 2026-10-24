@@ -1,6 +1,7 @@
 import React from 'react';
 import { apiFetch, type ListingInput, type PlantListing } from '../api/catalog';
 import type { AuthSession } from '../App';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 type NurseryProfile = { name: string; phone?: string | null; city?: string | null; address?: string | null; website?: string | null };
 type FormValues = ListingInput & { imageUrlsText: string };
@@ -22,7 +23,21 @@ const InventoryPage: React.FC<{ session: AuthSession }> = ({ session }) => {
   const [error, setError] = React.useState('');
   const [message, setMessage] = React.useState('');
 
-  const loadData = async () => {
+  // Silent refresh updates only the listings list. It deliberately does
+  // NOT reload the nursery profile, because the profile state is also
+  // the profile form's input — reloading it would wipe typing.
+  // A failed silent refresh keeps the previous list.
+  const loadData = async (silent = false) => {
+    if (silent) {
+      try {
+        const listingData = await apiFetch<{ listings: PlantListing[] }>('/api/catalog/listings/mine', session.token);
+        setListings(listingData.listings);
+        setError('');
+      } catch {
+        // Keep the previous list on a failed background refresh.
+      }
+      return;
+    }
     setLoading(true);
     try {
       const [listingData, nurseryData] = await Promise.all([
@@ -43,6 +58,7 @@ const InventoryPage: React.FC<{ session: AuthSession }> = ({ session }) => {
   };
 
   React.useEffect(() => { void loadData(); }, [session.token]);
+  useAutoRefresh(() => { void loadData(true); }, 30000);
 
   const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
