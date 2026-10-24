@@ -21,7 +21,7 @@ const hashPassword = async (plainText) => bcryptjs_1.default.hash(plainText, 12)
 exports.hashPassword = hashPassword;
 const verifyPassword = async (plainText, hashedPassword) => bcryptjs_1.default.compare(plainText, hashedPassword);
 exports.verifyPassword = verifyPassword;
-const signToken = (payload) => jsonwebtoken_1.default.sign(payload, env_1.config.JWT_SECRET, { expiresIn: '24h' });
+const signToken = (payload) => jsonwebtoken_1.default.sign(payload, env_1.config.JWT_SECRET, { expiresIn: '48h' });
 exports.signToken = signToken;
 const verifyToken = (token) => jsonwebtoken_1.default.verify(token, env_1.config.JWT_SECRET);
 exports.verifyToken = verifyToken;

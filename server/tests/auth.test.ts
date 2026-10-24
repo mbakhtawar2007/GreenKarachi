@@ -43,4 +43,15 @@ describe('auth helpers', () => {
     assert.equal(decoded.id, 'user-1');
     assert.equal(decoded.email, 'demo@example.com');
   });
+
+  test('session tokens expire after 48 hours', () => {
+    const payload = { id: 'user-1', email: 'demo@example.com', name: 'Demo', roles: ['BUYER'] as const };
+    const before = Math.floor(Date.now() / 1000);
+    const decoded = verifyToken(signToken(payload)) as { exp?: number };
+    const after = Math.floor(Date.now() / 1000);
+
+    assert.ok(decoded.exp !== undefined);
+    assert.ok(decoded.exp - before >= 48 * 60 * 60 - 5);
+    assert.ok(decoded.exp - after <= 48 * 60 * 60 + 5);
+  });
 });
