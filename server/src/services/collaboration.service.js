@@ -341,8 +341,12 @@ const submitSupplyOffer = async (supplierUserId, requestId, input, supabase = (0
     const nursery = await getNursery(supabase, supplierUserId);
     if (!nursery)
         throw new Error('Create a nursery profile before submitting a supply offer.');
-    if (input.quantity > request.quantity_needed) {
-        throw new Error('Offer quantity cannot exceed the quantity needed for this request.');
+    // Size the offer against the *remaining* gap, not the original gap: with
+    // part of the need already committed, a full-gap offer could never be
+    // accepted and would linger as a dead pending offer.
+    const remainingGap = Math.max(0, request.quantity_needed - (request.committed_quantity ?? 0));
+    if (input.quantity > remainingGap) {
+        throw new Error('Offer quantity cannot exceed the remaining gap for this request.');
     }
     const existingOffers = await getOffersForRequest(supabase, requestId);
     if ((0, exports.findPendingOfferFromSupplier)(existingOffers, supplierUserId)) {

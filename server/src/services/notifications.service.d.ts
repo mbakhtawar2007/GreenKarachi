@@ -170,7 +170,6 @@ export declare const sanitizeNotification: (row: Record<string, unknown>) => {
 };
 type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 export declare const createNotification: (supabase: SupabaseClient, row: NotificationRow | null) => Promise<boolean>;
-export declare const notifyFromDraft: (supabase: SupabaseClient, draft: NotificationDraft) => Promise<boolean>;
 export declare const getMyNotifications: (userId: string, filters: NotificationListFilters, supabase?: SupabaseClient) => Promise<{
     notifications: {
         id: unknown;

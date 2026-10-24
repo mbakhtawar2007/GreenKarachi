@@ -170,9 +170,24 @@ const createListing = async (nurseryUserId, input) => {
 exports.createListing = createListing;
 const updateListing = async (listingId, nurseryUserId, input) => {
     const supabase = (0, auth_1.getSupabaseClient)();
+    // An edit must never silently resurrect an ARCHIVED listing: delisted
+    // inventory returns to the catalog only via an explicit re-publish.
+    const { data: current, error: readError } = await supabase
+        .from('plant_listings')
+        .select('status')
+        .eq('id', listingId)
+        .eq('nursery_user_id', nurseryUserId)
+        .maybeSingle();
+    if (readError)
+        throw new Error(readError.message);
+    if (!current)
+        throw new Error('Listing not found or you do not own it.');
+    const next = toDatabaseInput(input, nurseryUserId);
+    if (current.status === 'ARCHIVED')
+        next.status = 'ARCHIVED';
     const { data, error } = await supabase
         .from('plant_listings')
-        .update(toDatabaseInput(input, nurseryUserId))
+        .update(next)
         .eq('id', listingId)
         .eq('nursery_user_id', nurseryUserId)
         .select('*')

@@ -12,7 +12,7 @@ const roleOptions = [
   { value: 'BUYER', label: 'Buyer / Business' },
   { value: 'NURSERY_OWNER', label: 'Nursery Owner' },
   { value: 'PLANTATION_ORGANIZER', label: 'Plantation Organizer' },
-  { value: 'DONOR', label: 'Donor / Investor' }
+  { value: 'DONOR_INVESTOR', label: 'Donor / Investor' }
 ] as const;
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ onLogin }) => {

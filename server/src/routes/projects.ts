@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Response } from 'express';
 import { z } from 'zod';
 import { requireAuth, requireRoles, type RequestWithUser } from '../middleware/auth';
-import { verifyToken } from '../lib/auth';
+import { getSupabaseClient, normalizeRoles, verifyToken } from '../lib/auth';
 import {
   addProgressUpdate,
   changeProjectStatus,
@@ -43,21 +43,40 @@ const sendError = (res: Response, error: unknown) => {
 };
 
 // Discovery and published project details are public, like the marketplace
-// catalog. When a valid app token is present the viewer is attached so the
+// catalog. When a valid token is present the viewer is attached so the
 // service can apply organizer/participant visibility and contact rules.
+// Real logins use Supabase session tokens, not app JWTs, so the fallback
+// mirrors requireAuth: an unresolvable token simply leaves the request
+// anonymous for these public reads; protected routes still use requireAuth
+// and will reject it there.
 const optionalAuth = (req: RequestWithUser, _res: Response, next: NextFunction): void => {
   const header = req.headers.authorization;
-  if (header?.startsWith('Bearer ')) {
-    try {
-      const decoded = verifyToken(header.slice('Bearer '.length));
-      req.user = { id: decoded.id, email: decoded.email, name: decoded.name, roles: decoded.roles };
-    } catch {
-      // An invalid or Supabase-issued token simply leaves the request
-      // anonymous for these public reads; protected routes still use
-      // requireAuth and will reject it there.
-    }
+  if (!header?.startsWith('Bearer ')) {
+    next();
+    return;
   }
-  next();
+  const token = header.slice('Bearer '.length);
+  try {
+    const decoded = verifyToken(token);
+    req.user = { id: decoded.id, email: decoded.email, name: decoded.name, roles: decoded.roles };
+    next();
+    return;
+  } catch {
+    void Promise.resolve()
+      .then(() => getSupabaseClient().auth.getUser(token))
+      .then(({ data, error }) => {
+        if (!error && data.user) {
+          req.user = {
+            id: data.user.id,
+            email: data.user.email ?? '',
+            name: String(data.user.user_metadata?.name ?? 'User'),
+            roles: normalizeRoles(data.user.user_metadata?.roles as string[] | string | undefined)
+          };
+        }
+        next();
+      })
+      .catch(() => next());
+  }
 };
 
 // --- Discovery & detail (public, visibility enforced in the service) -------

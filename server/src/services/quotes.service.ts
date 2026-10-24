@@ -142,7 +142,7 @@ const todayIsoDate = () => new Date().toISOString().slice(0, 10);
 const getListing = async (supabase: SupabaseClient, listingId: string) => {
   const { data, error } = await supabase
     .from('plant_listings')
-    .select('id, nursery_user_id, name, species, available_quantity, minimum_order_quantity, status')
+    .select('id, nursery_user_id, name, species, available_quantity, minimum_order_quantity, status, moderation_status')
     .eq('id', listingId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -172,6 +172,10 @@ export const createQuoteRequest = async (
   if (listing.nursery_user_id === buyerUserId) throw new Error('You do not have permission to request a quote for your own listing.');
   if (listing.status !== 'ACTIVE' || listing.available_quantity <= 0) {
     throw new Error('This listing is out of stock and cannot be quoted right now.');
+  }
+  // Admin-hidden listings stay unquotable even when addressed directly by id.
+  if (listing.moderation_status && listing.moderation_status !== 'VISIBLE') {
+    throw new Error('This listing is not available for quotes right now.');
   }
   if (input.quantity < listing.minimum_order_quantity) {
     throw new Error(`Quantity must be at least the listing minimum order quantity of ${listing.minimum_order_quantity}.`);
@@ -427,6 +431,14 @@ export const acceptQuotation = async (buyerUserId: string, requestId: string, su
 
   const listing = await getListing(supabase, request.listing_id);
   if (!listing) throw new Error('Listing not found.');
+  // An order must not be accepted against a delisted or admin-hidden listing,
+  // even if the quote request predates the moderation decision.
+  if (listing.status !== 'ACTIVE') {
+    throw new Error('This listing is no longer active and cannot be ordered right now.');
+  }
+  if (listing.moderation_status && listing.moderation_status !== 'VISIBLE') {
+    throw new Error('This listing is not available for orders right now.');
+  }
   if (!hasSufficientStock(listing.available_quantity, quotation.quantity)) {
     throw new Error('The nursery is out of stock for the quoted quantity, so this quotation cannot be accepted.');
   }
@@ -452,12 +464,22 @@ export const acceptQuotation = async (buyerUserId: string, requestId: string, su
     throw new Error('The nursery is out of stock for the quoted quantity, so this quotation cannot be accepted.');
   }
 
+  // Rollback must be additive, never a snapshot restore: restoring the
+  // pre-reservation quantity would erase reservations other buyers made
+  // while this order was being created.
   const restoreStock = async () => {
+    const { data: current } = await supabase
+      .from('plant_listings')
+      .select('available_quantity, status')
+      .eq('id', listing.id)
+      .maybeSingle();
+    if (!current) return;
+    const restoredQuantity = current.available_quantity + quotation.quantity;
     await supabase
       .from('plant_listings')
       .update({
-        available_quantity: listing.available_quantity,
-        status: listing.status,
+        available_quantity: restoredQuantity,
+        status: current.status === 'ARCHIVED' ? 'ARCHIVED' : 'ACTIVE',
         updated_at: new Date().toISOString()
       })
       .eq('id', listing.id);

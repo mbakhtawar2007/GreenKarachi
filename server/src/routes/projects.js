@@ -25,22 +25,41 @@ const sendError = (res, error) => {
     return res.status(500).json({ message: 'Project request failed.' });
 };
 // Discovery and published project details are public, like the marketplace
-// catalog. When a valid app token is present the viewer is attached so the
+// catalog. When a valid token is present the viewer is attached so the
 // service can apply organizer/participant visibility and contact rules.
+// Real logins use Supabase session tokens, not app JWTs, so the fallback
+// mirrors requireAuth: an unresolvable token simply leaves the request
+// anonymous for these public reads; protected routes still use requireAuth
+// and will reject it there.
 const optionalAuth = (req, _res, next) => {
     const header = req.headers.authorization;
-    if (header?.startsWith('Bearer ')) {
-        try {
-            const decoded = (0, auth_2.verifyToken)(header.slice('Bearer '.length));
-            req.user = { id: decoded.id, email: decoded.email, name: decoded.name, roles: decoded.roles };
-        }
-        catch {
-            // An invalid or Supabase-issued token simply leaves the request
-            // anonymous for these public reads; protected routes still use
-            // requireAuth and will reject it there.
-        }
+    if (!header?.startsWith('Bearer ')) {
+        next();
+        return;
     }
-    next();
+    const token = header.slice('Bearer '.length);
+    try {
+        const decoded = (0, auth_2.verifyToken)(token);
+        req.user = { id: decoded.id, email: decoded.email, name: decoded.name, roles: decoded.roles };
+        next();
+        return;
+    }
+    catch {
+        void Promise.resolve()
+            .then(() => (0, auth_2.getSupabaseClient)().auth.getUser(token))
+            .then(({ data, error }) => {
+            if (!error && data.user) {
+                req.user = {
+                    id: data.user.id,
+                    email: data.user.email ?? '',
+                    name: String(data.user.user_metadata?.name ?? 'User'),
+                    roles: (0, auth_2.normalizeRoles)(data.user.user_metadata?.roles)
+                };
+            }
+            next();
+        })
+            .catch(() => next());
+    }
 };
 // --- Discovery & detail (public, visibility enforced in the service) -------
 router.get('/', optionalAuth, async (req, res) => {

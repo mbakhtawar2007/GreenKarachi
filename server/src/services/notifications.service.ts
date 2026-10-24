@@ -417,11 +417,6 @@ export const createNotification = async (
   }
 };
 
-export const notifyFromDraft = async (
-  supabase: SupabaseClient,
-  draft: NotificationDraft
-): Promise<boolean> => createNotification(supabase, buildNotification(draft));
-
 export const getMyNotifications = async (
   userId: string,
   filters: NotificationListFilters,

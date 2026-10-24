@@ -382,14 +382,34 @@ const updateProject = async (organizerUserId, projectId, input, supabase = (0, a
     if (!data)
         throw new Error('Plantation project not found.');
     // Requirements are replaced as a set so the breakdown always matches
-    // the form the organizer just submitted.
+    // the form the organizer just submitted. The previous set is kept so a
+    // failed replacement can roll back instead of leaving zero requirements.
+    const { data: previousRequirements } = await supabase
+        .from('project_requirements')
+        .select('plant_name, species, quantity, notes')
+        .eq('project_id', projectId);
     const { error: deleteError } = await supabase
         .from('project_requirements')
         .delete()
         .eq('project_id', projectId);
     if (deleteError)
         throw new Error(deleteError.message);
-    await insertRequirements(supabase, projectId, input.requirements);
+    try {
+        await insertRequirements(supabase, projectId, input.requirements);
+    }
+    catch (insertError) {
+        if (previousRequirements && previousRequirements.length > 0) {
+            await insertRequirements(supabase, projectId, previousRequirements.map((row) => ({
+                plantName: row.plant_name,
+                species: row.species,
+                quantity: row.quantity,
+                notes: row.notes
+            }))).catch(() => {
+                // Best-effort rollback: the original error below is still reported.
+            });
+        }
+        throw insertError;
+    }
     return enrichProject(supabase, data, organizerUserId);
 };
 exports.updateProject = updateProject;
@@ -534,6 +554,10 @@ const submitPledge = async (supporterUserId, supporterRoles, projectId, input, s
     }
     if (!(0, exports.canPledgeToProject)(project, supporterUserId)) {
         throw new Error('This project is not published and does not accept pledges.');
+    }
+    // Admin-hidden projects stay unpledgeable even when addressed directly by id.
+    if (project.moderation_status && project.moderation_status !== 'VISIBLE') {
+        throw new Error('This project is not accepting pledges right now.');
     }
     const existingPledges = await getPledgesForProject(supabase, projectId);
     if ((0, exports.findLivePledge)(existingPledges, supporterUserId, input.pledgeType)) {

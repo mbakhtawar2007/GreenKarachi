@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markAllNotificationsRead = exports.markNotificationRead = exports.getUnreadNotificationCount = exports.getMyNotifications = exports.notifyFromDraft = exports.createNotification = exports.sanitizeNotification = exports.applyNotificationRead = exports.canMarkNotificationRead = exports.countUnreadNotifications = exports.isUnreadNotification = exports.messageReceivedNotification = exports.reportUpdatedNotification = exports.contentModerationNotification = exports.accountSuspensionNotification = exports.verificationDecisionNotification = exports.pledgeStatusNotification = exports.pledgeReceivedNotification = exports.supplyOfferStatusNotification = exports.supplyOfferReceivedNotification = exports.orderStatusNotification = exports.orderConfirmedNotification = exports.quoteRequestCancelledNotification = exports.quoteRequestDeclinedNotification = exports.quotationDeclinedNotification = exports.quotationReceivedNotification = exports.quoteRequestReceivedNotification = exports.buildNotification = exports.notificationLinkFor = exports.notificationListFilterSchema = exports.notificationRefTypes = exports.notificationTypes = void 0;
+exports.markAllNotificationsRead = exports.markNotificationRead = exports.getUnreadNotificationCount = exports.getMyNotifications = exports.createNotification = exports.sanitizeNotification = exports.applyNotificationRead = exports.canMarkNotificationRead = exports.countUnreadNotifications = exports.isUnreadNotification = exports.messageReceivedNotification = exports.reportUpdatedNotification = exports.contentModerationNotification = exports.accountSuspensionNotification = exports.verificationDecisionNotification = exports.pledgeStatusNotification = exports.pledgeReceivedNotification = exports.supplyOfferStatusNotification = exports.supplyOfferReceivedNotification = exports.orderStatusNotification = exports.orderConfirmedNotification = exports.quoteRequestCancelledNotification = exports.quoteRequestDeclinedNotification = exports.quotationDeclinedNotification = exports.quotationReceivedNotification = exports.quoteRequestReceivedNotification = exports.buildNotification = exports.notificationLinkFor = exports.notificationListFilterSchema = exports.notificationRefTypes = exports.notificationTypes = void 0;
 const zod_1 = require("zod");
 const auth_1 = require("../lib/auth");
 // Phase 8 domain rules.
@@ -329,8 +329,6 @@ const createNotification = async (supabase, row) => {
     }
 };
 exports.createNotification = createNotification;
-const notifyFromDraft = async (supabase, draft) => (0, exports.createNotification)(supabase, (0, exports.buildNotification)(draft));
-exports.notifyFromDraft = notifyFromDraft;
 const getMyNotifications = async (userId, filters, supabase = (0, auth_1.getSupabaseClient)()) => {
     const from = (filters.page - 1) * filters.pageSize;
     let query = supabase

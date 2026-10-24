@@ -75,10 +75,8 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
     res.json({
         name: 'GreenKarachi API',
-        version: '0.0.1',
         description: 'B2B plant marketplace backend',
-        health: '/api/health',
-        auth: 'disabled-for-now'
+        health: '/api/health'
     });
 });
 app.use((error, req, res, _next) => {

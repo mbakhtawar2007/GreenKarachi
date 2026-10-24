@@ -86,7 +86,9 @@ const NurseryDirectoryPage: React.FC = () => {
               <div>
                 <h2 className="text-lg font-semibold text-green-950">{nursery.name}</h2>
                 <p className="mt-1 text-sm text-gray-600">{[nursery.city, nursery.address].filter(Boolean).join(' · ') || 'Location not provided'}</p>
-                {nursery.website && <a href={nursery.website} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-green-800 underline underline-offset-4 hover:text-green-950">Visit website</a>}
+                {nursery.website && (/^https?:\/\//i.test(nursery.website)
+                  ? <a href={nursery.website} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-medium text-green-800 underline underline-offset-4 hover:text-green-950">Visit website</a>
+                  : <span className="mt-2 inline-block text-sm text-gray-600">{nursery.website}</span>)}
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${nursery.is_verified ? 'bg-green-100 text-green-900' : nursery.verification_status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-900'}`}>
                 {nursery.is_verified ? 'Verified' : nursery.verification_status === 'REJECTED' ? 'Not verified' : 'Verification pending'}

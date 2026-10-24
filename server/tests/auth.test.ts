@@ -9,7 +9,7 @@ import {
   verifyPassword,
   verifyToken
 } from '../src/lib/auth';
-import { registerSchema } from '../src/services/auth.service';
+import { nurseryProfileSchema, registerSchema } from '../src/services/auth.service';
 
 describe('auth helpers', () => {
   test('hashes and verifies a password', async () => {
@@ -66,6 +66,14 @@ describe('auth helpers', () => {
       });
       assert.equal(parsed.role, role);
     }
+  });
+
+  test('nursery website must be an http(s) URL', () => {
+    const base = { name: 'Test Nursery', phone: '', city: '', address: '', website: '' };
+    assert.equal(nurseryProfileSchema.parse({ ...base, website: 'https://example.com' }).website, 'https://example.com');
+    assert.equal(nurseryProfileSchema.parse({ ...base, website: '' }).website, '');
+    assert.throws(() => nurseryProfileSchema.parse({ ...base, website: 'javascript:alert(1)' }));
+    assert.throws(() => nurseryProfileSchema.parse({ ...base, website: 'example.com' }));
   });
 
   test('session tokens expire after 48 hours', () => {

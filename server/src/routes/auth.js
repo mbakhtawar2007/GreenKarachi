@@ -5,6 +5,18 @@ const zod_1 = require("zod");
 const auth_service_1 = require("../services/auth.service");
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
+// Supabase auth errors (e.g. 'User already registered', 'Invalid login
+// credentials') reveal whether an email has an account, so they are never
+// passed through: only validation messages and the post-password suspension
+// notice (which requires knowing the password) keep their specific text.
+const SUSPENDED_MESSAGE = 'This account has been suspended. Contact the GreenKarachi team if you believe this is a mistake.';
+const authErrorMessage = (error, fallback) => {
+    if (error instanceof zod_1.z.ZodError)
+        return error.issues[0]?.message ?? fallback;
+    if (error instanceof Error && error.message === SUSPENDED_MESSAGE)
+        return error.message;
+    return fallback;
+};
 router.post('/register', async (req, res) => {
     try {
         const parsed = auth_service_1.registerSchema.parse(req.body);
@@ -12,8 +24,7 @@ router.post('/register', async (req, res) => {
         res.status(201).json(result);
     }
     catch (error) {
-        const message = error instanceof zod_1.z.ZodError ? error.issues[0]?.message : error.message;
-        res.status(400).json({ message });
+        res.status(400).json({ message: authErrorMessage(error, 'Registration failed. Please check your details and try again.') });
     }
 });
 router.post('/login', async (req, res) => {
@@ -23,8 +34,7 @@ router.post('/login', async (req, res) => {
         res.json(result);
     }
     catch (error) {
-        const message = error instanceof zod_1.z.ZodError ? error.issues[0]?.message : error.message;
-        res.status(400).json({ message });
+        res.status(400).json({ message: authErrorMessage(error, 'Login failed. Please check your email and password and try again.') });
     }
 });
 router.post('/logout', (_req, res) => {
@@ -45,7 +55,7 @@ router.get('/nursery/me', auth_1.requireAuth, async (req, res) => {
         return res.json({ nursery });
     }
     catch (error) {
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: 'Failed to load nursery profile.' });
     }
 });
 router.put('/nursery/me', auth_1.requireAuth, (0, auth_1.requireRoles)('NURSERY_OWNER'), async (req, res) => {
@@ -58,8 +68,5 @@ router.put('/nursery/me', auth_1.requireAuth, (0, auth_1.requireRoles)('NURSERY_
         const message = error instanceof zod_1.z.ZodError ? error.issues[0]?.message : error.message;
         res.status(400).json({ message });
     }
-});
-router.get('/admin/users', auth_1.requireAuth, (0, auth_1.requireRoles)('ADMIN'), async (_req, res) => {
-    res.json({ users: [], message: 'User listing is handled in Supabase tables or your admin dashboard.' });
 });
 exports.default = router;

@@ -19,7 +19,20 @@ exports.nurseryProfileSchema = zod_1.z.object({
     phone: zod_1.z.string().trim().optional().or(zod_1.z.literal('')),
     city: zod_1.z.string().trim().optional().or(zod_1.z.literal('')),
     address: zod_1.z.string().trim().optional().or(zod_1.z.literal('')),
-    website: zod_1.z.string().trim().optional().or(zod_1.z.literal(''))
+    // A website must be a real http(s) URL: the directory renders it as a
+    // link, and a free-text value would allow javascript: URIs (stored XSS
+    // with access to a visitor's session token) or broken relative links.
+    website: zod_1.z.string().trim().optional().or(zod_1.z.literal('')).refine((value) => {
+        if (!value)
+            return true;
+        try {
+            const url = new URL(value);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        }
+        catch {
+            return false;
+        }
+    }, { message: 'Website must be a valid http:// or https:// URL.' })
 });
 const registerUser = async (input) => {
     const supabase = (0, auth_1.getSupabaseClient)();
@@ -96,21 +109,42 @@ const loginUser = async (input) => {
 exports.loginUser = loginUser;
 const getCurrentUser = async (userId) => {
     const supabase = (0, auth_1.getSupabaseClient)();
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
+    // The route already authenticates the caller and passes req.user.id; look
+    // that profile up instead of calling getUser() with no token (which always
+    // errors on the session-less service client and made this endpoint 404).
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, email, roles')
+        .eq('id', userId)
+        .maybeSingle();
+    if (error)
+        throw new Error(error.message);
+    if (!data) {
         throw new Error('User not found.');
     }
     return (0, auth_1.sanitizeUser)({
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.user_metadata?.name ?? 'User',
-        roles: data.user.user_metadata?.roles ?? ['BUYER'],
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        roles: data.roles ?? ['BUYER'],
         passwordHash: undefined
     });
 };
 exports.getCurrentUser = getCurrentUser;
 const upsertNurseryProfile = async (userId, input) => {
     const supabase = (0, auth_1.getSupabaseClient)();
+    // A verified badge must describe the details an admin actually reviewed.
+    // If a verified nursery changes its name, city, or address, the profile
+    // returns to PENDING so the new details get reviewed before the badge does.
+    const { data: existing } = await supabase
+        .from('nurseries')
+        .select('name, city, address, is_verified')
+        .eq('user_id', userId)
+        .maybeSingle();
+    const materialChange = existing?.is_verified &&
+        (existing.name !== input.name.trim() ||
+            (existing.city ?? null) !== (input.city?.trim() || null) ||
+            (existing.address ?? null) !== (input.address?.trim() || null));
     const { data, error } = await supabase
         .from('nurseries')
         .upsert({
@@ -120,6 +154,9 @@ const upsertNurseryProfile = async (userId, input) => {
         city: input.city?.trim() || null,
         address: input.address?.trim() || null,
         website: input.website?.trim() || null,
+        ...(materialChange
+            ? { verification_status: 'PENDING', is_verified: false, verified_by: null, verified_at: null }
+            : {}),
         updated_at: new Date().toISOString()
     })
         .select()
